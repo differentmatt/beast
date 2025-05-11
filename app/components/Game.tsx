@@ -356,10 +356,13 @@ export default function Game() {
 
         let newR = br, newC = bc;
 
-        // Decide whether to move randomly (1/3 chance) or toward player
-        const moveRandomly = Math.random() < 1/3;
+        // Calculate distance between beast and player
+        const distance = Math.sqrt(Math.pow(player.row - br, 2) + Math.pow(player.col - bc, 2));
 
-        if (moveRandomly && possibleMoves.length > 0) {
+        // Only move towards player if within 10 blocks
+        const shouldMoveTowardsPlayer = distance <= 10 && Math.random() >= 1/3;
+
+        if (!shouldMoveTowardsPlayer && possibleMoves.length > 0) {
           // Move randomly
           const randomMove = possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
           newR = randomMove.row;

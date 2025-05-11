@@ -11,7 +11,15 @@ body{
   display:inline-block;
   line-height:1;
   white-space:nowrap;
-  font-size:min(2vw,18px);
+  font-size:min(1.5vw,14px);
+  max-width: 95vw;
+  max-height: 90vh;
+  overflow: auto;
+}
+
+/* Add row styling for better readability */
+.row {
+  white-space: pre;
 }
 
 /* per-cell colors */

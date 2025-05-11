@@ -3,8 +3,36 @@ import { useState, useEffect, useMemo } from 'react';
 
 interface Coord { row: number; col: number; }
 
+// Game constants
 const BEAST_MS = 600;                   // beast step cadence (slightly slower for larger map)
 const MAP_SIZE = 40;                    // size of the map (40x40)
+
+// Map generation constants
+const WALL_DENSITY_MIN = 0.01;          // minimum percentage of inner cells that are walls (3%)
+const WALL_DENSITY_MAX = 0.02;          // maximum percentage of inner cells that are walls (5%)
+const WALL_SEGMENTS_DIVISOR = 25;       // divisor to determine number of wall segments
+const WALL_LENGTH_MIN = 3;              // minimum length of wall segments
+const WALL_LENGTH_MAX = 10;             // maximum length of wall segments
+const WALL_PADDING = 3;                 // padding from edge for wall placement
+
+const ROOM_COUNT_MIN = 0;               // minimum number of rooms
+const ROOM_COUNT_MAX = 2;               // maximum number of rooms
+const ROOM_SIZE_MIN = 2;                // minimum room size (2x2)
+const ROOM_SIZE_MAX = 3;                // maximum room size (3x3)
+const ROOM_PADDING = 2;                 // padding from edge for room placement
+
+const BEAST_COUNT_MIN = 16;              // minimum number of beasts
+const BEAST_COUNT_MAX = 30;             // maximum number of beasts
+const MIN_BEAST_PLAYER_DISTANCE = 12;   // minimum distance between beast and player
+const BEAST_SENSING_DISTANCE = 10;      // distance at which beasts can sense player
+const BEAST_RANDOM_MOVE_CHANCE = 1/4;   // chance beast will move randomly even when player is in range
+
+const BLOCK_DENSITY_MIN = 0.1;         // minimum percentage of inner cells that are blocks (5%)
+const BLOCK_DENSITY_MAX = 0.3;          // maximum percentage of inner cells that are blocks (10%)
+const NEAR_PLAYER_BLOCKS_MIN = 3;       // minimum number of blocks near player
+const NEAR_PLAYER_BLOCKS_MAX = 5;       // maximum number of blocks near player
+const NEAR_PLAYER_BLOCK_DISTANCE_MIN = 3; // minimum distance for near-player blocks
+const NEAR_PLAYER_BLOCK_DISTANCE_MAX = 8; // maximum distance for near-player blocks
 
 // Function to generate a random map
 function generateRandomMap() {
@@ -23,21 +51,21 @@ function generateRandomMap() {
   }
 
   // Create some maze-like structures with walls
-  // Add random internal walls (8-12% of inner cells)
+  // Add random internal walls (reduced from 8-12% to 3-5% of inner cells)
   const innerCells = (MAP_SIZE - 2) * (MAP_SIZE - 2);
-  const wallCount = Math.floor(innerCells * (0.08 + Math.random() * 0.04));
+  const wallCount = Math.floor(innerCells * (WALL_DENSITY_MIN + Math.random() * (WALL_DENSITY_MAX - WALL_DENSITY_MIN)));
 
   // Create some wall patterns rather than just random walls
   // Add some horizontal and vertical wall segments
-  const numWallSegments = Math.floor(wallCount / 20);
+  const numWallSegments = Math.floor(wallCount / WALL_SEGMENTS_DIVISOR);
 
   for (let i = 0; i < numWallSegments; i++) {
     const isHorizontal = Math.random() > 0.5;
-    const length = 3 + Math.floor(Math.random() * 7); // Wall length 3-10
+    const length = WALL_LENGTH_MIN + Math.floor(Math.random() * (WALL_LENGTH_MAX - WALL_LENGTH_MIN + 1));
 
     if (isHorizontal) {
-      const row = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
-      const startCol = 3 + Math.floor(Math.random() * (MAP_SIZE - length - 6));
+      const row = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - WALL_PADDING * 2));
+      const startCol = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - length - WALL_PADDING * 2));
 
       // Create a horizontal wall with a gap
       const gapPos = Math.floor(Math.random() * length);
@@ -48,8 +76,8 @@ function generateRandomMap() {
         }
       }
     } else {
-      const col = 3 + Math.floor(Math.random() * (MAP_SIZE - 6));
-      const startRow = 3 + Math.floor(Math.random() * (MAP_SIZE - length - 6));
+      const col = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - WALL_PADDING * 2));
+      const startRow = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - length - WALL_PADDING * 2));
 
       // Create a vertical wall with a gap
       const gapPos = Math.floor(Math.random() * length);
@@ -72,12 +100,12 @@ function generateRandomMap() {
   }
 
   // Add some small rooms (2x2 or 3x3 empty spaces surrounded by walls)
-  const numRooms = 3 + Math.floor(Math.random() * 3);
+  const numRooms = ROOM_COUNT_MIN + Math.floor(Math.random() * (ROOM_COUNT_MAX - ROOM_COUNT_MIN + 1));
 
   for (let i = 0; i < numRooms; i++) {
-    const roomSize = 2 + Math.floor(Math.random() * 2); // 2x2 or 3x3
-    const startRow = 2 + Math.floor(Math.random() * (MAP_SIZE - roomSize - 4));
-    const startCol = 2 + Math.floor(Math.random() * (MAP_SIZE - roomSize - 4));
+    const roomSize = ROOM_SIZE_MIN + Math.floor(Math.random() * (ROOM_SIZE_MAX - ROOM_SIZE_MIN + 1));
+    const startRow = ROOM_PADDING + Math.floor(Math.random() * (MAP_SIZE - roomSize - ROOM_PADDING * 2));
+    const startCol = ROOM_PADDING + Math.floor(Math.random() * (MAP_SIZE - roomSize - ROOM_PADDING * 2));
 
     // Create room walls
     for (let r = startRow - 1; r <= startRow + roomSize; r++) {
@@ -130,7 +158,7 @@ function generateRandomMap() {
   }
 
   // Add beasts (6-10 beasts for larger map - balanced for difficulty)
-  const beastCount = 6 + Math.floor(Math.random() * 5);
+  const beastCount = BEAST_COUNT_MIN + Math.floor(Math.random() * (BEAST_COUNT_MAX - BEAST_COUNT_MIN + 1));
   let beastsPlaced = 0;
 
   while (beastsPlaced < beastCount) {
@@ -143,15 +171,17 @@ function generateRandomMap() {
 
       const distance = Math.sqrt(Math.pow(row - playerPos, 2) + Math.pow(col - playerCol, 2));
 
-      if (distance >= 12) {
+      if (distance >= MIN_BEAST_PLAYER_DISTANCE) {
         map[row] = map[row].substring(0, col) + 'H' + map[row].substring(col + 1);
         beastsPlaced++;
       }
     }
   }
 
-  // Add blocks (20-30 blocks for larger map - balanced for gameplay)
-  const blockCount = 20 + Math.floor(Math.random() * 11);
+  // Add blocks (35-50 blocks for larger map - balanced for gameplay)
+  // const blockCount = BLOCK_COUNT_MIN + Math.floor(Math.random() * (BLOCK_COUNT_MAX - BLOCK_COUNT_MIN + 1));
+  const blockCount = Math.floor(innerCells * (BLOCK_DENSITY_MIN + Math.random() * (BLOCK_DENSITY_MAX - BLOCK_DENSITY_MIN)));
+
   let blocksPlaced = 0;
 
   // Place some blocks near the player for immediate gameplay
@@ -159,12 +189,13 @@ function generateRandomMap() {
   const playerCol = map[playerPos].indexOf('P');
 
   // Try to place 3-5 blocks within a reasonable distance from the player
-  const nearPlayerBlockCount = 3 + Math.floor(Math.random() * 3);
+  const nearPlayerBlockCount = NEAR_PLAYER_BLOCKS_MIN + Math.floor(Math.random() * (NEAR_PLAYER_BLOCKS_MAX - NEAR_PLAYER_BLOCKS_MIN + 1));
   let nearPlayerBlocksPlaced = 0;
 
   while (nearPlayerBlocksPlaced < nearPlayerBlockCount && blocksPlaced < blockCount) {
     // Place blocks at a distance of 3-8 cells from player
-    const distance = 3 + Math.floor(Math.random() * 6);
+    const distance = NEAR_PLAYER_BLOCK_DISTANCE_MIN + Math.floor(Math.random() *
+                    (NEAR_PLAYER_BLOCK_DISTANCE_MAX - NEAR_PLAYER_BLOCK_DISTANCE_MIN + 1));
     const angle = Math.random() * 2 * Math.PI; // Random angle
 
     const row = Math.floor(playerPos + Math.sin(angle) * distance);
@@ -360,7 +391,7 @@ export default function Game() {
         const distance = Math.sqrt(Math.pow(player.row - br, 2) + Math.pow(player.col - bc, 2));
 
         // Only move towards player if within 10 blocks
-        const shouldMoveTowardsPlayer = distance <= 10 && Math.random() >= 1/3;
+        const shouldMoveTowardsPlayer = distance <= BEAST_SENSING_DISTANCE && Math.random() >= BEAST_RANDOM_MOVE_CHANCE;
 
         if (!shouldMoveTowardsPlayer && possibleMoves.length > 0) {
           // Move randomly

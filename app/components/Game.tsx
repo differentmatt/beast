@@ -1,228 +1,19 @@
 'use client'
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import StatusBar from './StatusBar';
+import { calculateScore } from '../utils/gameUtils';
+import { getLevel, initializeLevelManager } from '../utils/levelManager';
 
 interface Coord { row: number; col: number; }
 
 // Game constants
-const BEAST_MS = 600;                   // beast step cadence (slightly slower for larger map)
 const MAP_SIZE = 40;                    // size of the map (40x40)
-
-// Map generation constants
-const WALL_DENSITY_MIN = 0.01;          // minimum percentage of inner cells that are walls (3%)
-const WALL_DENSITY_MAX = 0.02;          // maximum percentage of inner cells that are walls (5%)
-const WALL_SEGMENTS_DIVISOR = 25;       // divisor to determine number of wall segments
-const WALL_LENGTH_MIN = 3;              // minimum length of wall segments
-const WALL_LENGTH_MAX = 10;             // maximum length of wall segments
-const WALL_PADDING = 3;                 // padding from edge for wall placement
-
-const ROOM_COUNT_MIN = 0;               // minimum number of rooms
-const ROOM_COUNT_MAX = 2;               // maximum number of rooms
-const ROOM_SIZE_MIN = 2;                // minimum room size (2x2)
-const ROOM_SIZE_MAX = 3;                // maximum room size (3x3)
-const ROOM_PADDING = 2;                 // padding from edge for room placement
-
-const BEAST_COUNT_MIN = 16;              // minimum number of beasts
-const BEAST_COUNT_MAX = 30;             // maximum number of beasts
-const MIN_BEAST_PLAYER_DISTANCE = 12;   // minimum distance between beast and player
+const BEAST_MS = 600;                   // beast step cadence (slightly slower for larger map)
+const INITIAL_LIVES = 3;                // starting number of lives
 const BEAST_SENSING_DISTANCE = 10;      // distance at which beasts can sense player
 const BEAST_RANDOM_MOVE_CHANCE = 1/4;   // chance beast will move randomly even when player is in range
 
-const BLOCK_DENSITY_MIN = 0.1;         // minimum percentage of inner cells that are blocks (5%)
-const BLOCK_DENSITY_MAX = 0.3;          // maximum percentage of inner cells that are blocks (10%)
-const NEAR_PLAYER_BLOCKS_MIN = 3;       // minimum number of blocks near player
-const NEAR_PLAYER_BLOCKS_MAX = 5;       // maximum number of blocks near player
-const NEAR_PLAYER_BLOCK_DISTANCE_MIN = 3; // minimum distance for near-player blocks
-const NEAR_PLAYER_BLOCK_DISTANCE_MAX = 8; // maximum distance for near-player blocks
-
-// Function to generate a random map
-function generateRandomMap() {
-  const map: string[] = [];
-
-  // Initialize with empty spaces
-  for (let i = 0; i < MAP_SIZE; i++) {
-    map.push('.'.repeat(MAP_SIZE));
-  }
-
-  // Create border walls
-  map[0] = '#'.repeat(MAP_SIZE);
-  map[MAP_SIZE - 1] = '#'.repeat(MAP_SIZE);
-  for (let i = 1; i < MAP_SIZE - 1; i++) {
-    map[i] = '#' + map[i].substring(1, MAP_SIZE - 1) + '#';
-  }
-
-  // Create some maze-like structures with walls
-  // Add random internal walls (reduced from 8-12% to 3-5% of inner cells)
-  const innerCells = (MAP_SIZE - 2) * (MAP_SIZE - 2);
-  const wallCount = Math.floor(innerCells * (WALL_DENSITY_MIN + Math.random() * (WALL_DENSITY_MAX - WALL_DENSITY_MIN)));
-
-  // Create some wall patterns rather than just random walls
-  // Add some horizontal and vertical wall segments
-  const numWallSegments = Math.floor(wallCount / WALL_SEGMENTS_DIVISOR);
-
-  for (let i = 0; i < numWallSegments; i++) {
-    const isHorizontal = Math.random() > 0.5;
-    const length = WALL_LENGTH_MIN + Math.floor(Math.random() * (WALL_LENGTH_MAX - WALL_LENGTH_MIN + 1));
-
-    if (isHorizontal) {
-      const row = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - WALL_PADDING * 2));
-      const startCol = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - length - WALL_PADDING * 2));
-
-      // Create a horizontal wall with a gap
-      const gapPos = Math.floor(Math.random() * length);
-
-      for (let j = 0; j < length; j++) {
-        if (j !== gapPos) { // Leave a gap for passage
-          map[row] = map[row].substring(0, startCol + j) + '#' + map[row].substring(startCol + j + 1);
-        }
-      }
-    } else {
-      const col = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - WALL_PADDING * 2));
-      const startRow = WALL_PADDING + Math.floor(Math.random() * (MAP_SIZE - length - WALL_PADDING * 2));
-
-      // Create a vertical wall with a gap
-      const gapPos = Math.floor(Math.random() * length);
-
-      for (let j = 0; j < length; j++) {
-        if (j !== gapPos) { // Leave a gap for passage
-          map[startRow + j] = map[startRow + j].substring(0, col) + '#' + map[startRow + j].substring(col + 1);
-        }
-      }
-    }
-  }
-
-  // Add some random walls
-  for (let i = 0; i < wallCount - (numWallSegments * 5); i++) {
-    const row = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    const col = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    if (map[row][col] !== '#') { // Don't overwrite existing walls
-      map[row] = map[row].substring(0, col) + '#' + map[row].substring(col + 1);
-    }
-  }
-
-  // Add some small rooms (2x2 or 3x3 empty spaces surrounded by walls)
-  const numRooms = ROOM_COUNT_MIN + Math.floor(Math.random() * (ROOM_COUNT_MAX - ROOM_COUNT_MIN + 1));
-
-  for (let i = 0; i < numRooms; i++) {
-    const roomSize = ROOM_SIZE_MIN + Math.floor(Math.random() * (ROOM_SIZE_MAX - ROOM_SIZE_MIN + 1));
-    const startRow = ROOM_PADDING + Math.floor(Math.random() * (MAP_SIZE - roomSize - ROOM_PADDING * 2));
-    const startCol = ROOM_PADDING + Math.floor(Math.random() * (MAP_SIZE - roomSize - ROOM_PADDING * 2));
-
-    // Create room walls
-    for (let r = startRow - 1; r <= startRow + roomSize; r++) {
-      for (let c = startCol - 1; c <= startCol + roomSize; c++) {
-        if (r === startRow - 1 || r === startRow + roomSize ||
-            c === startCol - 1 || c === startCol + roomSize) {
-          map[r] = map[r].substring(0, c) + '#' + map[r].substring(c + 1);
-        } else {
-          // Ensure room interior is empty
-          map[r] = map[r].substring(0, c) + '.' + map[r].substring(c + 1);
-        }
-      }
-    }
-
-    // Add a door (gap in the wall)
-    const doorSide = Math.floor(Math.random() * 4); // 0=top, 1=right, 2=bottom, 3=left
-    let doorRow = startRow - 1, doorCol = startCol - 1;
-
-    switch (doorSide) {
-      case 0: // top
-        doorRow = startRow - 1;
-        doorCol = startCol + Math.floor(Math.random() * roomSize);
-        break;
-      case 1: // right
-        doorRow = startRow + Math.floor(Math.random() * roomSize);
-        doorCol = startCol + roomSize;
-        break;
-      case 2: // bottom
-        doorRow = startRow + roomSize;
-        doorCol = startCol + Math.floor(Math.random() * roomSize);
-        break;
-      case 3: // left
-        doorRow = startRow + Math.floor(Math.random() * roomSize);
-        doorCol = startCol - 1;
-        break;
-    }
-
-    map[doorRow] = map[doorRow].substring(0, doorCol) + '.' + map[doorRow].substring(doorCol + 1);
-  }
-
-  // Add player (ensure it's not on a wall)
-  let playerPlaced = false;
-  while (!playerPlaced) {
-    const row = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    const col = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    if (map[row][col] === '.') {
-      map[row] = map[row].substring(0, col) + 'P' + map[row].substring(col + 1);
-      playerPlaced = true;
-    }
-  }
-
-  // Add beasts (6-10 beasts for larger map - balanced for difficulty)
-  const beastCount = BEAST_COUNT_MIN + Math.floor(Math.random() * (BEAST_COUNT_MAX - BEAST_COUNT_MIN + 1));
-  let beastsPlaced = 0;
-
-  while (beastsPlaced < beastCount) {
-    const row = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    const col = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    if (map[row][col] === '.') {
-      // Don't place beasts too close to the player (minimum distance of 12 cells)
-      const playerPos = map.findIndex(line => line.includes('P'));
-      const playerCol = map[playerPos].indexOf('P');
-
-      const distance = Math.sqrt(Math.pow(row - playerPos, 2) + Math.pow(col - playerCol, 2));
-
-      if (distance >= MIN_BEAST_PLAYER_DISTANCE) {
-        map[row] = map[row].substring(0, col) + 'H' + map[row].substring(col + 1);
-        beastsPlaced++;
-      }
-    }
-  }
-
-  // Add blocks (35-50 blocks for larger map - balanced for gameplay)
-  // const blockCount = BLOCK_COUNT_MIN + Math.floor(Math.random() * (BLOCK_COUNT_MAX - BLOCK_COUNT_MIN + 1));
-  const blockCount = Math.floor(innerCells * (BLOCK_DENSITY_MIN + Math.random() * (BLOCK_DENSITY_MAX - BLOCK_DENSITY_MIN)));
-
-  let blocksPlaced = 0;
-
-  // Place some blocks near the player for immediate gameplay
-  const playerPos = map.findIndex(line => line.includes('P'));
-  const playerCol = map[playerPos].indexOf('P');
-
-  // Try to place 3-5 blocks within a reasonable distance from the player
-  const nearPlayerBlockCount = NEAR_PLAYER_BLOCKS_MIN + Math.floor(Math.random() * (NEAR_PLAYER_BLOCKS_MAX - NEAR_PLAYER_BLOCKS_MIN + 1));
-  let nearPlayerBlocksPlaced = 0;
-
-  while (nearPlayerBlocksPlaced < nearPlayerBlockCount && blocksPlaced < blockCount) {
-    // Place blocks at a distance of 3-8 cells from player
-    const distance = NEAR_PLAYER_BLOCK_DISTANCE_MIN + Math.floor(Math.random() *
-                    (NEAR_PLAYER_BLOCK_DISTANCE_MAX - NEAR_PLAYER_BLOCK_DISTANCE_MIN + 1));
-    const angle = Math.random() * 2 * Math.PI; // Random angle
-
-    const row = Math.floor(playerPos + Math.sin(angle) * distance);
-    const col = Math.floor(playerCol + Math.cos(angle) * distance);
-
-    // Ensure coordinates are valid
-    if (row > 0 && row < MAP_SIZE - 1 && col > 0 && col < MAP_SIZE - 1) {
-      if (map[row][col] === '.') {
-        map[row] = map[row].substring(0, col) + 'B' + map[row].substring(col + 1);
-        blocksPlaced++;
-        nearPlayerBlocksPlaced++;
-      }
-    }
-  }
-
-  // Place the rest of the blocks randomly
-  while (blocksPlaced < blockCount) {
-    const row = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    const col = 1 + Math.floor(Math.random() * (MAP_SIZE - 2));
-    if (map[row][col] === '.') {
-      map[row] = map[row].substring(0, col) + 'B' + map[row].substring(col + 1);
-      blocksPlaced++;
-    }
-  }
-
-  return map;
-}
+// Note: Map generation is now handled by the levelManager
 
 // Key function for coordinates
 const key = (r: number, c: number) => `${r},${c}`;
@@ -251,7 +42,21 @@ function parseLevel(map: string[]) {
   return { player, beasts, blocks, walls };
 }
 
-export default function Game() {
+// Props interface for the Game component
+interface GameProps {
+  onLevelChange?: (level: number) => void;
+  onReset?: (resetFunction: (advanceLevel?: boolean) => void) => void;
+}
+
+export default function Game({ onLevelChange, onReset }: GameProps = {}) {
+  // Level progression state
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [lives, setLives] = useState(INITIAL_LIVES);
+  const [score, setScore] = useState(0);
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [initialBeastCount, setInitialBeastCount] = useState(0);
+  const [beastsEliminated, setBeastsEliminated] = useState(0);
+
   // Generate map on client-side only
   const [levelMap, setLevelMap] = useState<string[]>([]);
   const [rows, setRows] = useState(MAP_SIZE);
@@ -259,10 +64,35 @@ export default function Game() {
 
   // Initialize the game on client-side only
   useEffect(() => {
-    const newMap = generateRandomMap();
-    setLevelMap(newMap);
-    setRows(newMap.length);
-    setCols(newMap[0].length);
+    // Initialize level manager
+    initializeLevelManager(20); // Pre-generate 20 levels
+
+    // Load the first level
+    loadLevel(currentLevel);
+
+    // Start the timer
+    const timer = setInterval(() => {
+      setTimeElapsed(prev => prev + 1);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Expose the reset function to the parent component
+  useEffect(() => {
+    if (onReset) {
+      onReset(reset);
+    }
+  }, [onReset]);
+
+  // Load a specific level
+  const loadLevel = useCallback((levelNumber: number) => {
+    const level = getLevel(levelNumber);
+    setLevelMap(level.mapData);
+    setRows(level.mapData.length);
+    setCols(level.mapData[0].length);
+    setTimeElapsed(0);
+    setBeastsEliminated(0);
   }, []);
 
   // Parse level data from the map
@@ -289,6 +119,9 @@ export default function Game() {
       setBlocks(bl0);
       setOver(false);
       setWon(false);
+
+      // Track initial beast count for scoring
+      setInitialBeastCount(b0.length);
     }
   }, [levelData, p0, b0, bl0]);
 
@@ -297,19 +130,50 @@ export default function Game() {
   const blockIdx = (r:number,c:number) => blocks.findIndex(b => b.row===r && b.col===c);
   const hasBlock = (r:number,c:number) => blockIdx(r,c) !== -1;
 
-  /* restart */
-  const reset = () => {
-    const newMap = generateRandomMap();
-    setLevelMap(newMap);
-    setRows(newMap.length);
-    setCols(newMap[0].length);
+  /* restart or advance to next level */
+  const reset = (advanceLevel = false) => {
+    let newLevel = currentLevel;
 
-    const { player, beasts, blocks } = parseLevel(newMap);
-    setPlayer(player);
-    setBeasts(beasts);
-    setBlocks(blocks);
+    if (advanceLevel) {
+      // Advance to next level
+      newLevel = currentLevel + 1;
+      setCurrentLevel(newLevel);
+      loadLevel(newLevel);
+
+      // Add score for completing the level
+      const levelScore = calculateScore(beastsEliminated, timeElapsed, currentLevel);
+      setScore(prevScore => prevScore + levelScore);
+    } else if (gameOver) {
+      // Game over - restart current level if lives remain
+      if (lives > 1) {
+        setLives(prevLives => prevLives - 1);
+        loadLevel(currentLevel);
+      } else {
+        // Out of lives - restart from level 1
+        newLevel = 1;
+        setLives(INITIAL_LIVES);
+        setCurrentLevel(newLevel);
+        setScore(0);
+        loadLevel(newLevel);
+      }
+    } else {
+      // Manual restart (R key) - restart from level 1
+      newLevel = 1;
+      setLives(INITIAL_LIVES);
+      setCurrentLevel(newLevel);
+      setScore(0);
+      loadLevel(newLevel);
+    }
+
+    // Notify parent component of level change
+    if (onLevelChange && newLevel !== currentLevel) {
+      onLevelChange(newLevel);
+    }
+
     setOver(false);
     setWon(false);
+    setTimeElapsed(0);
+    setBeastsEliminated(0);
   };
 
   /* ───────────── beast timer ─────────────*/
@@ -331,15 +195,48 @@ export default function Game() {
     };
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'r' || e.key === 'R') { e.preventDefault(); reset(); return; }
+      // Manual restart with R key
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        reset();
+        return;
+      }
+
+      // For testing - advance to next level with 'n' key
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        reset(true);
+        return;
+      }
+
+      // Handle game over state
+      if (gameOver) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          reset();
+        }
+        return;
+      }
+
+      // Handle game won state
+      if (gameWon) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          reset(true); // Advance to next level
+        }
+        return;
+      }
+
+      // Handle movement
       const dir = dirMap[e.key];
-      if (!dir || gameOver || gameWon) return;
+      if (!dir) return;
+
       e.preventDefault();
       movePlayer(dir);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [player, blocks, beasts, gameOver, gameWon]);
+  }, [player, blocks, beasts, gameOver, gameWon, currentLevel]);
 
   /* ───────────── movement logic ─────────────*/
   function movePlayer({ row: dR, col: dC }: Coord) {
@@ -375,6 +272,8 @@ export default function Game() {
         // Only remove the beast if it's trapped
         if (isTrapped) {
           setBeasts(b => { const nb=[...b]; nb.splice(beastHere,1); return nb;});
+          // Track beast elimination for scoring
+          setBeastsEliminated(prev => prev + 1);
         } else {
           // Beast survives, so we can't push the block here
           return;
@@ -504,10 +403,31 @@ export default function Game() {
   }
 
   return (
-    <div className="board" style={{ gridTemplateColumns: `repeat(${cols}, 16px)`, gridTemplateRows: `repeat(${rows}, 16px)` }}>
-      {cellsJSX}
-      {gameOver && <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>Game Over — press R to restart</div>}
-      {gameWon && <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>You win! — press R to play again</div>}
+    <div className="game-container">
+      <StatusBar
+        currentLevel={currentLevel}
+        beastsLeft={beasts.length}
+        totalBeasts={initialBeastCount}
+        timeElapsed={timeElapsed}
+        lives={lives}
+        score={score}
+      />
+      <div className="board" style={{ gridTemplateColumns: `repeat(${cols}, 16px)`, gridTemplateRows: `repeat(${rows}, 16px)` }}>
+        {cellsJSX}
+        {gameOver && (
+          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>
+            {lives > 1
+              ? `Game Over — ${lives - 1} lives left. Press SPACE to retry level ${currentLevel}`
+              : `Game Over — No lives left. Press SPACE to restart from level 1`
+            }
+          </div>
+        )}
+        {gameWon && (
+          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>
+            Level {currentLevel} Complete! — Press SPACE to advance to level {currentLevel + 1}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

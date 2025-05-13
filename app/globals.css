@@ -6,27 +6,74 @@ body{
   font-family:Consolas,Monaco,'Courier New',monospace;
 }
 
-/* board uses monospace ASCII */
-.board{
-  display:inline-block;
-  line-height:1;
-  white-space:nowrap;
-  font-size:min(1.5vw,14px);
+/* Grid-based board layout */
+.board {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(40, 16px);
+  grid-template-rows: repeat(40, 16px);
+  gap: 0;
+  width: max-content;
   max-width: 95vw;
   max-height: 90vh;
   overflow: auto;
+  margin: 0 auto;
+  background-color: #000;
+  padding: 0;
+  border: 0;
+  font-family: monospace;
 }
 
-/* Add row styling for better readability */
-.row {
-  white-space: pre;
+/* Cell styling */
+.cell {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  user-select: none;
+  padding: 0;
+  margin: 0;
+  border: 0;
+  box-sizing: border-box;
 }
 
-/* per-cell colors */
-.player{ color:cyan;   }
-.beast { color:red;    }
-.block { color:lime;   }
-.wall  { color:yellow; }
-.empty { color:inherit;}
+/* Cell types */
+.cell.player {
+  background-color: #00AAAA;
+  color: white;
+}
 
-.status{ font-size:16px; margin-bottom:8px; }
+.cell.beast {
+  background-color: #AA0000;
+  color: white;
+}
+
+.cell.block {
+  background-color: #00AA00;
+  color: black;
+}
+
+.cell.wall {
+  background-color: #AAAA00;
+  color: black;
+}
+
+.cell.empty {
+  background-color: transparent;
+  color: #333;
+}
+
+/* Status message styling */
+.status {
+  font-size: 16px;
+  line-height: normal;
+  padding: 10px 0;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.8);
+  color: white;
+  grid-column: 1 / -1;
+  width: 100%;
+  z-index: 10;
+}

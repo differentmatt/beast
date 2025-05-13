@@ -224,19 +224,21 @@ function generateRandomMap() {
   return map;
 }
 
-const levelMap = generateRandomMap();
-const rows = levelMap.length;
-const cols = levelMap[0].length;
+// Key function for coordinates
 const key = (r: number, c: number) => `${r},${c}`;
 
-// ────────────── static level parsing ──────────────
-function parseLevel() {
+// ────────────── level parsing ──────────────
+function parseLevel(map: string[]) {
   let player: Coord = { row: 0, col: 0 };
   const beasts: Coord[] = [];
   const blocks: Coord[] = [];
   const walls = new Set<string>();
 
-  levelMap.forEach((line, r) => {
+  if (map.length === 0) {
+    return { player, beasts, blocks, walls };
+  }
+
+  map.forEach((line: string, r: number) => {
     [...line].forEach((ch, c) => {
       switch (ch) {
         case 'P': player = { row: r, col: c }; break;
@@ -250,13 +252,45 @@ function parseLevel() {
 }
 
 export default function Game() {
+  // Generate map on client-side only
+  const [levelMap, setLevelMap] = useState<string[]>([]);
+  const [rows, setRows] = useState(MAP_SIZE);
+  const [cols, setCols] = useState(MAP_SIZE);
+
+  // Initialize the game on client-side only
+  useEffect(() => {
+    const newMap = generateRandomMap();
+    setLevelMap(newMap);
+    setRows(newMap.length);
+    setCols(newMap[0].length);
+  }, []);
+
+  // Parse level data from the map
+  const levelData = useMemo(() => {
+    if (levelMap.length === 0) {
+      return { player: { row: 0, col: 0 }, beasts: [], blocks: [], walls: new Set<string>() };
+    }
+    return parseLevel(levelMap);
+  }, [levelMap]);
+
   /* initial state (fresh copy each time) */
-  const { player: p0, beasts: b0, blocks: bl0, walls } = useMemo(parseLevel, []);
+  const { player: p0, beasts: b0, blocks: bl0, walls } = levelData;
   const [player, setPlayer]   = useState<Coord>(p0);
   const [beasts, setBeasts]   = useState<Coord[]>(b0);
   const [blocks, setBlocks]   = useState<Coord[]>(bl0);
   const [gameOver, setOver]   = useState(false);
   const [gameWon,  setWon]    = useState(false);
+
+  // Update state when level data changes
+  useEffect(() => {
+    if (levelMap.length > 0) {
+      setPlayer(p0);
+      setBeasts(b0);
+      setBlocks(bl0);
+      setOver(false);
+      setWon(false);
+    }
+  }, [levelData, p0, b0, bl0]);
 
   /* helpers */
   const beastIdx = (r:number,c:number) => beasts.findIndex(b => b.row===r && b.col===c);
@@ -265,9 +299,17 @@ export default function Game() {
 
   /* restart */
   const reset = () => {
-    const { player, beasts, blocks } = parseLevel();
-    setPlayer(player); setBeasts(beasts); setBlocks(blocks);
-    setOver(false); setWon(false);
+    const newMap = generateRandomMap();
+    setLevelMap(newMap);
+    setRows(newMap.length);
+    setCols(newMap[0].length);
+
+    const { player, beasts, blocks } = parseLevel(newMap);
+    setPlayer(player);
+    setBeasts(beasts);
+    setBlocks(blocks);
+    setOver(false);
+    setWon(false);
   };
 
   /* ───────────── beast timer ─────────────*/
@@ -440,25 +482,32 @@ export default function Game() {
   }
 
   /* ───────────── render grid ─────────────*/
-  const rowsJSX = [];
+  const cellsJSX = [];
   for (let r = 0; r < rows; r++) {
-    const cells = [];
     for (let c = 0; c < cols; c++) {
-      let ch = '\u00A0', cls='empty';
-      if (player.row===r && player.col===c) { ch='▲'; cls='player'; }
-      else if (beastIdx(r,c)!==-1)          { ch='H'; cls='beast';  }
-      else if (hasBlock(r,c))               { ch='█'; cls='block';  }
-      else if (walls.has(key(r,c)))         { ch='█'; cls='wall';   }
-      cells.push(<span key={c} className={cls}>{ch}</span>);
+      let ch = '', cls = 'cell empty';
+      if (player.row === r && player.col === c) { ch = '▲'; cls = 'cell player'; }
+      else if (beastIdx(r, c) !== -1)          { ch = 'H'; cls = 'cell beast'; }
+      else if (hasBlock(r, c))                 { ch = ''; cls = 'cell block'; }
+      else if (walls.has(key(r, c)))           { ch = ''; cls = 'cell wall'; }
+
+      cellsJSX.push(
+        <div
+          key={`${r}-${c}`}
+          className={cls}
+          style={{ gridRow: r + 1, gridColumn: c + 1 }}
+        >
+          {ch}
+        </div>
+      );
     }
-    rowsJSX.push(<div key={r} className="row">{cells}</div>);
   }
 
   return (
-    <div className="board">
-      {rowsJSX}
-      {gameOver && <div className="status">Game Over — press R to restart</div>}
-      {gameWon  && <div className="status">You win! — press R to play again</div>}
+    <div className="board" style={{ gridTemplateColumns: `repeat(${cols}, 16px)`, gridTemplateRows: `repeat(${rows}, 16px)` }}>
+      {cellsJSX}
+      {gameOver && <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>Game Over — press R to restart</div>}
+      {gameWon && <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>You win! — press R to play again</div>}
     </div>
   );
 }

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
+  "framework": "nextjs",
+  "regions": ["iad1"],
+  "env": {
+    "NEXTAUTH_URL": {
+      "development": "http://localhost:3000",
+      "production": "https://your-production-url.vercel.app"
+    }
+  },
+  "build": {
+    "env": {
+      "NEXTAUTH_SECRET": "@nextauth-secret"
+    }
+  }
+}

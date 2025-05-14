@@ -1,36 +1,111 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Beast - ASCII Clone with NextAuth.js Authentication
+
+This project is a Next.js application with user authentication implemented using NextAuth.js. It's designed to be deployed on Vercel.
+
+## Features
+
+- User authentication with NextAuth.js
+- Email/password sign-in and registration
+- Protected routes
+- User profiles
+- Responsive design
+- SQLite database for development
+- Ready for PostgreSQL deployment on Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- Node.js 18.x or later
+- npm or yarn
+
+### Installation
+
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd beast
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Set up environment variables:
+   - Copy the `.env` file and update the values as needed
+   - Generate a secure NEXTAUTH_SECRET using `openssl rand -base64 32`
+
+4. Set up the database:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+
+## Database Configuration
+
+- For development, the application uses SQLite
+- For production on Vercel, you should use a PostgreSQL database:
+  1. Create a PostgreSQL database on Vercel or another provider
+  2. Update the `DATABASE_URL` in your environment variables
+  3. Update the `provider` in `prisma/schema.prisma` to `postgresql`
+
+## Deploying on Vercel
+
+1. Push your code to a GitHub repository
+
+2. Connect your repository to Vercel:
+   - Go to [Vercel](https://vercel.com) and sign in
+   - Click "New Project" and import your repository
+   - Configure the project settings
+
+3. Set up environment variables in the Vercel dashboard:
+   - `NEXTAUTH_SECRET`: A secure random string
+   - `DATABASE_URL`: Your PostgreSQL connection string
+   - Any other provider credentials (Google, GitHub, etc.)
+
+4. Deploy the project
+
+5. After deployment, update the `NEXTAUTH_URL` in your environment variables to match your production URL
+
+## Authentication Providers
+
+The application is set up with email/password authentication. To add more providers:
+
+1. Install the required packages
+2. Add provider credentials to your environment variables
+3. Update the `auth.ts` file to include the new providers
+
+Example for adding Google authentication:
+
+```typescript
+import GoogleProvider from 'next-auth/providers/google';
+
+// In the providers array:
+GoogleProvider({
+  clientId: process.env.GOOGLE_CLIENT_ID!,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET!
+}),
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Project Structure
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `app/` - Next.js application code
+  - `api/` - API routes
+  - `auth/` - Authentication pages
+  - `components/` - React components
+  - `lib/` - Utility functions
+  - `types/` - TypeScript type definitions
+- `prisma/` - Prisma schema and migrations
+- `public/` - Static assets
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## License
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[MIT](LICENSE)

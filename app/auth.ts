@@ -79,5 +79,11 @@ export const authOptions: NextAuthOptions = {
 
 // Helper function to get the session on the server side
 export async function getServerSession() {
-  return await getNextAuthServerSession(authOptions);
+  try {
+    const session = await getNextAuthServerSession(authOptions);
+    return session;
+  } catch (error) {
+    console.error('getServerSession: Error getting session:', error);
+    return null;
+  }
 }

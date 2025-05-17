@@ -6,17 +6,14 @@ interface StatusBarProps {
   beastsLeft: number;
   totalBeasts: number;
   timeElapsed: number;
-  lives: number;
-  score: number;
+  lives?: number; // Made optional since we're not using it
 }
 
 export default function StatusBar({
   currentLevel,
   beastsLeft,
   totalBeasts,
-  timeElapsed,
-  lives,
-  score
+  timeElapsed
 }: StatusBarProps) {
   return (
     <div className="status-bar">
@@ -31,14 +28,6 @@ export default function StatusBar({
       <div className="status-item">
         <span className="status-label">Time:</span>
         <span className="status-value">{formatTime(timeElapsed)}</span>
-      </div>
-      <div className="status-item">
-        <span className="status-label">Lives:</span>
-        <span className="status-value">{lives}</span>
-      </div>
-      <div className="status-item">
-        <span className="status-label">Score:</span>
-        <span className="status-value">{score}</span>
       </div>
     </div>
   );

@@ -1,7 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import StatusBar from './StatusBar';
-import { calculateScore } from '../utils/gameUtils';
 import { getLevel, initializeLevelManager } from '../utils/levelManager';
 
 interface Coord { row: number; col: number; }
@@ -9,7 +8,6 @@ interface Coord { row: number; col: number; }
 // Game constants
 const MAP_SIZE = 40;                    // size of the map (40x40)
 const BEAST_MS = 600;                   // beast step cadence (slightly slower for larger map)
-const INITIAL_LIVES = 3;                // starting number of lives
 const BEAST_SENSING_DISTANCE = 10;      // distance at which beasts can sense player
 const BEAST_RANDOM_MOVE_CHANCE = 1/4;   // chance beast will move randomly even when player is in range
 
@@ -51,11 +49,8 @@ interface GameProps {
 export default function Game({ onLevelChange, onReset }: GameProps = {}) {
   // Level progression state
   const [currentLevel, setCurrentLevel] = useState(1);
-  const [lives, setLives] = useState(INITIAL_LIVES);
-  const [score, setScore] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [initialBeastCount, setInitialBeastCount] = useState(0);
-  const [beastsEliminated, setBeastsEliminated] = useState(0);
 
   // Generate map on client-side only
   const [levelMap, setLevelMap] = useState<string[]>([]);
@@ -92,7 +87,6 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     setRows(level.mapData.length);
     setCols(level.mapData[0].length);
     setTimeElapsed(0);
-    setBeastsEliminated(0);
   }, []);
 
   // Parse level data from the map
@@ -140,28 +134,15 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
       setCurrentLevel(newLevel);
       loadLevel(newLevel);
 
-      // Add score for completing the level
-      const levelScore = calculateScore(beastsEliminated, timeElapsed, currentLevel);
-      setScore(prevScore => prevScore + levelScore);
     } else if (gameOver) {
-      // Game over - restart current level if lives remain
-      if (lives > 1) {
-        setLives(prevLives => prevLives - 1);
-        loadLevel(currentLevel);
-      } else {
-        // Out of lives - restart from level 1
-        newLevel = 1;
-        setLives(INITIAL_LIVES);
-        setCurrentLevel(newLevel);
-        setScore(0);
-        loadLevel(newLevel);
-      }
-    } else {
-      // Manual restart (R key) - restart from level 1
+      // Game over - restart from level 1
       newLevel = 1;
-      setLives(INITIAL_LIVES);
       setCurrentLevel(newLevel);
-      setScore(0);
+      loadLevel(newLevel);
+    } else {
+      // Manual restart - restart from level 1
+      newLevel = 1;
+      setCurrentLevel(newLevel);
       loadLevel(newLevel);
     }
 
@@ -173,7 +154,6 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     setOver(false);
     setWon(false);
     setTimeElapsed(0);
-    setBeastsEliminated(0);
   };
 
   /* ───────────── beast timer ─────────────*/
@@ -195,12 +175,7 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     };
 
     const onKey = (e: KeyboardEvent) => {
-      // Manual restart with R key
-      if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        reset();
-        return;
-      }
+      // R key shortcut removed
 
       // For testing - advance to next level with 'n' key
       if (e.key === 'n' || e.key === 'N') {
@@ -272,8 +247,6 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
         // Only remove the beast if it's trapped
         if (isTrapped) {
           setBeasts(b => { const nb=[...b]; nb.splice(beastHere,1); return nb;});
-          // Track beast elimination for scoring
-          setBeastsEliminated(prev => prev + 1);
         } else {
           // Beast survives, so we can't push the block here
           return;
@@ -403,30 +376,35 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
   }
 
   return (
-    <div className="game-container">
+    <div className="game-container w-full">
       <StatusBar
         currentLevel={currentLevel}
         beastsLeft={beasts.length}
         totalBeasts={initialBeastCount}
         timeElapsed={timeElapsed}
-        lives={lives}
-        score={score}
       />
       <div className="board" style={{ gridTemplateColumns: `repeat(${cols}, 16px)`, gridTemplateRows: `repeat(${rows}, 16px)` }}>
         {cellsJSX}
+
+        <div className="test-controls" style={{ gridColumn: '1 / -1', gridRow: rows + 1, marginTop: '10px' }}>
+          <button onClick={() => reset(true)} className="test-button">
+            Next Level
+          </button>
+          <button onClick={() => reset(false)} className="test-button">
+            Restart
+          </button>
+        </div>
         {gameOver && (
-          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>
-            {lives > 1
-              ? `Game Over — ${lives - 1} lives left. Press SPACE to retry level ${currentLevel}`
-              : `Game Over — No lives left. Press SPACE to restart from level 1`
-            }
+          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 2 }}>
+            Game Over
           </div>
         )}
         {gameWon && (
-          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 1 }}>
-            Level {currentLevel} Complete! — Press SPACE to advance to level {currentLevel + 1}
+          <div className="status" style={{ gridColumn: '1 / -1', gridRow: rows + 2 }}>
+            Level {currentLevel} Complete!
           </div>
         )}
+
       </div>
     </div>
   );

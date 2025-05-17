@@ -1,7 +1,7 @@
 import './globals.css';
 import type { Metadata } from 'next';
 import { Providers } from './providers';
-import Navbar from './components/Navbar';
+import LeftMenu from './components/LeftMenu';
 
 export const metadata: Metadata = {
   title: 'Beast – ASCII clone',
@@ -17,8 +17,10 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <Providers>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
+          <div className="container">
+            <LeftMenu />
+            <main className="main">{children}</main>
+          </div>
         </Providers>
       </body>
     </html>

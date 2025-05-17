@@ -10,31 +10,6 @@ export function formatTime(seconds: number): string {
 }
 
 /**
- * Calculates score based on beasts eliminated, time taken, and level
- * @param beastsEliminated Number of beasts eliminated
- * @param timeElapsed Time taken in seconds
- * @param level Current level
- * @returns Calculated score
- */
-export function calculateScore(beastsEliminated: number, timeElapsed: number, level: number): number {
-  // Base score: 100 points per beast
-  const beastScore = beastsEliminated * 100;
-
-  // Time bonus: faster completion gives higher bonus
-  // Maximum time bonus is 500 points at 0 seconds (theoretical)
-  // Minimum time bonus is 0 points at 300 seconds (5 minutes) or more
-  const timeBonus = Math.max(0, 500 - Math.floor(timeElapsed * (500 / 300)));
-
-  // Level multiplier: higher levels give higher scores
-  const levelMultiplier = 1 + (level * 0.1); // 10% increase per level
-
-  // Calculate total score
-  const totalScore = Math.floor((beastScore + timeBonus) * levelMultiplier);
-
-  return totalScore;
-}
-
-/**
  * Generates level parameters based on level number
  * @param level Level number
  * @returns Level parameters

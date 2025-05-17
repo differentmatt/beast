@@ -20,9 +20,8 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     // Add routes that require authentication
-    '/dashboard/:path*',
-    '/profile',
-    '/profile/:path*',
+    '/settings',
+    '/settings/:path*',
     // Add more protected routes as needed
   ],
 };

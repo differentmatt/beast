@@ -6,7 +6,6 @@ export interface Level {
   mapData: string[];
   difficultyRating: number;
   timeLimit: number;
-  minScore: number;
 }
 
 // Constants for level generation
@@ -226,7 +225,6 @@ export function generateLevel(levelNumber: number): Level {
     mapData,
     difficultyRating,
     timeLimit: params.timeLimit,
-    minScore: levelNumber * 500, // Minimum score increases with level
   };
 }
 

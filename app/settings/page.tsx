@@ -1,11 +1,14 @@
 import { getServerSession } from '@/app/auth';
 import SignOutButton from '../components/SignOutButton';
 
+// Force dynamic rendering for this page
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsPage() {
   const session = await getServerSession();
 
   return (
-    <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div className="main-container w-full max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
       <div className="px-4 py-6 sm:px-0">
         <div className="border-4 border-dashed border-gray-200 rounded-lg p-6">
           <h1>Settings</h1>

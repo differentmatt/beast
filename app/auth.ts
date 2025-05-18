@@ -62,17 +62,30 @@ export const authOptions: NextAuthOptions = {
     newUser: '/auth/new-user',
   },
   callbacks: {
-    async session({ session, token }: { session: Session; token: JWT }) {
+    async session({ session, token }: { session: Session; token: JWT; user?: User }) {
+      console.log('NextAuth session callback - token present:', !!token);
       if (token && session.user) {
         session.user.id = token.sub!;
       }
       return session;
     },
-    async jwt({ token, user }: { token: JWT; user?: User }) {
+    async jwt({ token, user, account }) {
+      console.log('NextAuth JWT callback - user present:', !!user, 'account present:', !!account);
       if (user) {
         token.sub = user.id;
       }
       return token;
+    }
+  },
+  logger: {
+    error(code, metadata) {
+      console.error('NextAuth error:', code, metadata);
+    },
+    warn(code) {
+      console.warn('NextAuth warning:', code);
+    },
+    debug(code, metadata) {
+      console.log('NextAuth debug:', code, metadata);
     }
   },
 };

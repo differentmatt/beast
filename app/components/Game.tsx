@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useSession } from 'next-auth/react';
 import StatusBar from './StatusBar';
 import { getLevel, initializeLevelManager } from '../utils/levelManager';
 
@@ -63,7 +64,11 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     initializeLevelManager(20); // Pre-generate 20 levels
 
     // Load the first level
-    loadLevel(currentLevel);
+    const level = getLevel(currentLevel);
+    setLevelMap(level.mapData);
+    setRows(level.mapData.length);
+    setCols(level.mapData[0].length);
+    setTimeElapsed(0);
 
     // Start the timer
     const timer = setInterval(() => {
@@ -71,14 +76,7 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, []);
-
-  // Expose the reset function to the parent component
-  useEffect(() => {
-    if (onReset) {
-      onReset(reset);
-    }
-  }, [onReset]);
+  }, [currentLevel]);
 
   // Load a specific level
   const loadLevel = useCallback((levelNumber: number) => {
@@ -105,27 +103,13 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
   const [gameOver, setOver]   = useState(false);
   const [gameWon,  setWon]    = useState(false);
 
-  // Update state when level data changes
-  useEffect(() => {
-    if (levelMap.length > 0) {
-      setPlayer(p0);
-      setBeasts(b0);
-      setBlocks(bl0);
-      setOver(false);
-      setWon(false);
-
-      // Track initial beast count for scoring
-      setInitialBeastCount(b0.length);
-    }
-  }, [levelData, p0, b0, bl0]);
-
   /* helpers */
-  const beastIdx = (r:number,c:number) => beasts.findIndex(b => b.row===r && b.col===c);
-  const blockIdx = (r:number,c:number) => blocks.findIndex(b => b.row===r && b.col===c);
-  const hasBlock = (r:number,c:number) => blockIdx(r,c) !== -1;
+  const beastIdx = useCallback((r: number, c: number) => beasts.findIndex(b => b.row === r && b.col === c), [beasts]);
+  const blockIdx = useCallback((r: number, c: number) => blocks.findIndex(b => b.row === r && b.col === c), [blocks]);
+  const hasBlock = useCallback((r:number,c:number) => blockIdx(r,c) !== -1, [blockIdx]);
 
   /* restart or advance to next level */
-  const reset = (advanceLevel = false) => {
+  const reset = useCallback((advanceLevel = false) => {
     let newLevel = currentLevel;
 
     if (advanceLevel) {
@@ -154,67 +138,31 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     setOver(false);
     setWon(false);
     setTimeElapsed(0);
-  };
+  }, [currentLevel, gameOver, loadLevel, onLevelChange]);
 
-  /* ───────────── beast timer ─────────────*/
+  // Expose the reset function to the parent component
   useEffect(() => {
-    const id = setInterval(() => {
-      if (gameOver || gameWon) return;
-      stepBeasts();
-    }, BEAST_MS);
-    return () => clearInterval(id);
-  }, [blocks, beasts, gameOver, gameWon]); // Removed player from dependencies
+    if (onReset) {
+      onReset(reset);
+    }
+  }, [onReset, reset]);
 
-  /* ───────────── keyboard listener ─────────────*/
+  // Update state when level data changes
   useEffect(() => {
-    const dirMap: Record<string, Coord> = {
-      ArrowUp: { row: -1, col:  0 }, w: { row: -1, col: 0 },
-      ArrowDown:{ row: 1, col:  0 }, s:{ row:  1, col: 0 },
-      ArrowLeft:{ row: 0, col: -1 }, a:{ row:  0, col:-1 },
-      ArrowRight:{row: 0, col:  1 }, d:{ row:  0, col: 1 },
-    };
+    if (levelMap.length > 0) {
+      setPlayer(p0);
+      setBeasts(b0);
+      setBlocks(bl0);
+      setOver(false);
+      setWon(false);
 
-    const onKey = (e: KeyboardEvent) => {
-      // R key shortcut removed
-
-      // For testing - advance to next level with 'n' key
-      if (e.key === 'n' || e.key === 'N') {
-        e.preventDefault();
-        reset(true);
-        return;
-      }
-
-      // Handle game over state
-      if (gameOver) {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          reset();
-        }
-        return;
-      }
-
-      // Handle game won state
-      if (gameWon) {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          reset(true); // Advance to next level
-        }
-        return;
-      }
-
-      // Handle movement
-      const dir = dirMap[e.key];
-      if (!dir) return;
-
-      e.preventDefault();
-      movePlayer(dir);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [player, blocks, beasts, gameOver, gameWon, currentLevel]);
+      // Track initial beast count for scoring
+      setInitialBeastCount(b0.length);
+    }
+  }, [levelData, p0, b0, bl0, levelMap.length]);
 
   /* ───────────── movement logic ─────────────*/
-  function movePlayer({ row: dR, col: dC }: Coord) {
+  const movePlayer = useCallback(({ row: dR, col: dC }: Coord) => {
     const trgR = player.row + dR, trgC = player.col + dC;
     if (walls.has(key(trgR,trgC))) return;               // wall
     if (beastIdx(trgR,trgC) !== -1) { setOver(true); return; }
@@ -263,9 +211,9 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
       });
       setPlayer({ row: trgR, col: trgC });
     }
-  }
+  }, [player, walls, beastIdx, blockIdx, hasBlock, rows, cols, setOver, setBeasts, setBlocks, setPlayer]);
 
-  function stepBeasts() {
+  const stepBeasts = useCallback(() => {
     setBeasts(prev => {
       const next: Coord[] = [];
       const occupied = new Set<string>();
@@ -351,7 +299,64 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
       if (!caught && next.length === 0) setWon(true);
       return next;
     });
-  }
+  }, [player, walls, hasBlock, beastIdx, setOver, setWon]);
+
+  /* ───────────── beast timer ─────────────*/
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (gameOver || gameWon) return;
+      stepBeasts();
+    }, BEAST_MS);
+    return () => clearInterval(id);
+  }, [blocks, beasts, gameOver, gameWon, stepBeasts]);
+
+  /* ───────────── keyboard listener ─────────────*/
+  useEffect(() => {
+    const dirMap: Record<string, Coord> = {
+      ArrowUp: { row: -1, col:  0 }, w: { row: -1, col: 0 },
+      ArrowDown:{ row: 1, col:  0 }, s:{ row:  1, col: 0 },
+      ArrowLeft:{ row: 0, col: -1 }, a:{ row:  0, col:-1 },
+      ArrowRight:{row: 0, col:  1 }, d:{ row:  0, col: 1 },
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      // R key shortcut removed
+
+      // For testing - advance to next level with 'n' key
+      if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        reset(true);
+        return;
+      }
+
+      // Handle game over state
+      if (gameOver) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          reset();
+        }
+        return;
+      }
+
+      // Handle game won state
+      if (gameWon) {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          reset(true); // Advance to next level
+        }
+        return;
+      }
+
+      // Handle movement
+      const dir = dirMap[e.key];
+      if (!dir) return;
+
+      e.preventDefault();
+      movePlayer(dir);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [player, blocks, beasts, gameOver, gameWon, currentLevel, movePlayer, reset]);
 
   /* ───────────── render grid ─────────────*/
   const cellsJSX = [];
@@ -375,8 +380,31 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
     }
   }
 
+  // Get the session status
+  const { status } = useSession();
+
+  // If not authenticated, show sign-in message
+  if (status === 'unauthenticated') {
+    return (
+      <div className="game-container w-full flex flex-col items-center justify-center p-8 text-center">
+        <p className="mb-6">You need to be signed in to access the game.</p>
+        <p>👈</p>
+      </div>
+    );
+  }
+
+  // If loading, show loading state
+  if (status === 'loading') {
+    return (
+      <div className="game-container w-full flex items-center justify-center p-8">
+        <p>Loading game...</p>
+      </div>
+    );
+  }
+
+  // If authenticated, render the game
   return (
-    <div className="game-container w-full">
+    <div className="main-container game-container w-full">
       <StatusBar
         currentLevel={currentLevel}
         beastsLeft={beasts.length}

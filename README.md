@@ -1,111 +1,105 @@
-# Beast - ASCII Clone with NextAuth.js Authentication
+# Beast
 
-This project is a Next.js application with user authentication implemented using NextAuth.js. It's designed to be deployed on Vercel.
+A grid-based puzzle game built with Next.js where players navigate through procedurally generated levels, pushing blocks to trap beasts. The game features progressive difficulty with increasingly challenging levels.
 
-## Features
+## Game Features
 
+- Procedurally generated levels with increasing difficulty
+- Grid-based movement and block pushing mechanics
+- Strategic gameplay focused on trapping beasts
+- Level progression system
+- Time tracking and beast counting
+
+## Technical Features
+
+- Built with Next.js and React
 - User authentication with NextAuth.js
-- Email/password sign-in and registration
-- Protected routes
-- User profiles
-- Responsive design
-- SQLite database for development
+- Responsive design for various screen sizes
+- Prisma ORM with SQLite for development
 - Ready for PostgreSQL deployment on Vercel
 
-## Getting Started
+## How to Play
+
+- Use arrow keys or WASD to move your character (▲) around the grid
+- Push blocks (■) to trap beasts (H)
+- A beast is eliminated when it's trapped with no way to escape
+- Complete a level by eliminating all beasts
+- Press 'N' to advance to the next level during testing
+- Press Space or Enter to restart after game over or to advance after completing a level
+
+## Development
 
 ### Prerequisites
 
 - Node.js 18.x or later
 - npm or yarn
 
-### Installation
+### Setup
 
-1. Clone the repository:
+1. Clone the repository and install dependencies:
    ```bash
    git clone <repository-url>
    cd beast
-   ```
-
-2. Install dependencies:
-   ```bash
    npm install
    ```
 
-3. Set up environment variables:
-   - Copy the `.env` file and update the values as needed
+2. Set up environment variables:
+   - Create a `.env` file with required NextAuth and database configuration
    - Generate a secure NEXTAUTH_SECRET using `openssl rand -base64 32`
 
-4. Set up the database:
+3. Initialize the database:
    ```bash
    npx prisma generate
    npx prisma db push
    ```
 
-5. Run the development server:
+4. Start the development server:
    ```bash
    npm run dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+5. Open [http://localhost:3000](http://localhost:3000) in your browser
 
-## Database Configuration
+## Deployment
 
-- For development, the application uses SQLite
-- For production on Vercel, you should use a PostgreSQL database:
-  1. Create a PostgreSQL database on Vercel or another provider
-  2. Update the `DATABASE_URL` in your environment variables
-  3. Update the `provider` in `prisma/schema.prisma` to `postgresql`
+The application is configured for easy deployment on Vercel:
 
-## Deploying on Vercel
+1. For production, it's recommended to use PostgreSQL instead of SQLite:
+   - Create a PostgreSQL database
+   - Update the `DATABASE_URL` in your environment variables
+   - Change the provider in `prisma/schema.prisma` to `postgresql`
 
-1. Push your code to a GitHub repository
+2. Set up the required environment variables:
+   - `NEXTAUTH_SECRET`: A secure random string (generate with `openssl rand -base64 32`)
+   - `NEXTAUTH_URL`: Your production URL (after deployment)
+   - `DATABASE_URL`: Your database connection string
 
-2. Connect your repository to Vercel:
-   - Go to [Vercel](https://vercel.com) and sign in
-   - Click "New Project" and import your repository
-   - Configure the project settings
+3. Deploy to Vercel through their GitHub integration or CLI
 
-3. Set up environment variables in the Vercel dashboard:
-   - `NEXTAUTH_SECRET`: A secure random string
-   - `DATABASE_URL`: Your PostgreSQL connection string
-   - Any other provider credentials (Google, GitHub, etc.)
+## Authentication
 
-4. Deploy the project
+The application uses NextAuth.js for authentication with email/password by default. Additional providers (Google, GitHub, etc.) can be added by:
 
-5. After deployment, update the `NEXTAUTH_URL` in your environment variables to match your production URL
-
-## Authentication Providers
-
-The application is set up with email/password authentication. To add more providers:
-
-1. Install the required packages
-2. Add provider credentials to your environment variables
-3. Update the `auth.ts` file to include the new providers
-
-Example for adding Google authentication:
-
-```typescript
-import GoogleProvider from 'next-auth/providers/google';
-
-// In the providers array:
-GoogleProvider({
-  clientId: process.env.GOOGLE_CLIENT_ID!,
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET!
-}),
-```
+1. Installing the required packages
+2. Adding provider credentials to environment variables
+3. Updating the `auth.ts` file with the new provider configuration
 
 ## Project Structure
 
 - `app/` - Next.js application code
   - `api/` - API routes
   - `auth/` - Authentication pages
-  - `components/` - React components
-  - `lib/` - Utility functions
+  - `components/` - React game components (Game, StatusBar, etc.)
+  - `lib/` - Utility functions and database client
   - `types/` - TypeScript type definitions
-- `prisma/` - Prisma schema and migrations
+  - `utils/` - Game utilities (levelManager, gameUtils)
+- `prisma/` - Prisma schema and database configuration
 - `public/` - Static assets
 
 ## License
 
 [MIT](LICENSE)
+
+## About
+
+Beast is a challenging puzzle game inspired by classic grid-based games where strategic thinking and planning are key to success. The procedural level generation ensures a unique experience with each playthrough, while the difficulty progression keeps the game challenging as players advance.

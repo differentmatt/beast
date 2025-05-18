@@ -44,24 +44,6 @@ body {
   text-align: center;
 }
 
-/* Sign out button styling */
-.signout-button {
-  display: block;
-  width: 100%;
-  background: none;
-  border: none;
-  color: #fff;
-  text-align: left;
-  font-size: 1rem;
-  margin: 0.5rem 0;
-  padding: 0;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.signout-button:hover {
-  background-color: #444;
-}
 
 .main {
   flex: 1;
@@ -207,28 +189,9 @@ body {
   overflow: auto;
 }
 
-/* Test page styling */
-.test-page {
-  max-width: 800px;
-  margin: 0 auto;
-  padding: 20px;
-  text-align: center;
-}
 
-.test-page h1 {
-  font-size: 24px;
-  margin-bottom: 20px;
-  color: #00AAAA;
-}
-
-.test-page p {
-  margin-bottom: 10px;
-  color: #AAAAAA;
-  font-size: 14px;
-}
-
-/* Test controls */
-.test-controls {
+/* game- controls */
+.game-controls {
   display: flex;
   justify-content: center;
   align-items: center;
@@ -236,7 +199,7 @@ body {
   gap: 10px;
 }
 
-.test-button {
+.game-button {
   background-color: #00AAAA;
   color: white;
   border: none;
@@ -248,16 +211,7 @@ body {
   transition: background-color 0.2s;
 }
 
-.test-button:hover {
+.game-button:hover {
   background-color: #008888;
 }
 
-.level-display {
-  background-color: #111;
-  color: #00AAAA;
-  padding: 8px 16px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-size: 14px;
-  font-weight: bold;
-}

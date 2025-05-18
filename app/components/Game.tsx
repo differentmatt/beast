@@ -386,11 +386,11 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
       <div className="board" style={{ gridTemplateColumns: `repeat(${cols}, 16px)`, gridTemplateRows: `repeat(${rows}, 16px)` }}>
         {cellsJSX}
 
-        <div className="test-controls" style={{ gridColumn: '1 / -1', gridRow: rows + 1, marginTop: '10px' }}>
-          <button onClick={() => reset(true)} className="test-button">
+        <div className="game-controls" style={{ gridColumn: '1 / -1', gridRow: rows + 1, marginTop: '10px' }}>
+          <button onClick={() => reset(true)} className="game-button">
             Next Level
           </button>
-          <button onClick={() => reset(false)} className="test-button">
+          <button onClick={() => reset(false)} className="game-button">
             Restart
           </button>
         </div>

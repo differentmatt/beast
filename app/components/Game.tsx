@@ -386,7 +386,7 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
   // If not authenticated, show sign-in message
   if (status === 'unauthenticated') {
     return (
-      <div className="game-container w-full flex flex-col items-center justify-center p-8 text-center">
+      <div className="main-container game-container w-full flex flex-col items-center justify-center p-8 text-center">
         <p className="mb-6">You need to be signed in to access the game.</p>
         <p>👈</p>
       </div>
@@ -396,7 +396,7 @@ export default function Game({ onLevelChange, onReset }: GameProps = {}) {
   // If loading, show loading state
   if (status === 'loading') {
     return (
-      <div className="game-container w-full flex items-center justify-center p-8">
+      <div className="main-container game-container w-full flex items-center justify-center p-8">
         <p>Loading game...</p>
       </div>
     );

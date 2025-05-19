@@ -2,9 +2,11 @@
   "name": "beast2",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && prisma migrate deploy && next build",
+    "build": "prisma generate && next build",
+    "postbuild": "node scripts/postbuild.js",
     "start": "next start",
     "lint": "next lint"
   },

@@ -13,16 +13,22 @@ export const authOptions: NextAuthOptions = {
     CredentialsProvider({
       name: 'Credentials',
       credentials: {
-        email: { label: 'Email', type: 'email' },
+        emailOrUsername: { label: 'Email or Username', type: 'text' },
         password: { label: 'Password', type: 'password' }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if (!credentials?.emailOrUsername || !credentials?.password) {
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email }
+        // Try to find user by email or username
+        const user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: credentials.emailOrUsername },
+              { name: credentials.emailOrUsername }
+            ]
+          }
         });
 
         if (!user || !user.password) {
@@ -56,8 +62,8 @@ export const authOptions: NextAuthOptions = {
     strategy: 'jwt' as const,
   },
   pages: {
-    signIn: '/auth/signin',
-    signOut: '/auth/signout',
+    signIn: '/auth/sign-in',
+    signOut: '/auth/sign-out',
     error: '/auth/error',
     newUser: '/auth/new-user',
   },

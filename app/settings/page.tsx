@@ -45,7 +45,11 @@ export default async function SettingsPage() {
             </div>
           </div>
 
-         {session && <SignOutButton />}
+          {session && (
+            <div className="mt-6">
+              <SignOutButton />
+            </div>
+          )}
 
         </div>
       </div>

@@ -16,7 +16,7 @@ export async function middleware(request: NextRequest) {
     if (!token) {
       console.log('Middleware: No token found, redirecting to sign-in');
       // Redirect to the sign-in page if not authenticated
-      const signInUrl = new URL('/auth/signin', request.url);
+      const signInUrl = new URL('/auth/login', request.url);
       signInUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
       return NextResponse.redirect(signInUrl);
     }

@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>D-Pad with Image</title>
+  <style>
+    body {
+      margin: 0;
+      background: #111;
+      color: white;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 32px;
+    }
+
+    #placeholder {
+      width: 200px;
+      height: 200px;
+      background: #333;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: #aaa;
+    }
+
+    #dpad {
+      display: grid;
+      grid-template-areas:
+        ".    up    ."
+        "left  .  right"
+        ".   down  .";
+      gap: 10px;
+    }
+
+    .dir-button {
+      width: 64px;
+      height: 64px;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      font-size: 24px;
+      border: none;
+      border-radius: 12px;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .dir-button:active {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    #up    { grid-area: up; }
+    #down  { grid-area: down; }
+    #left  { grid-area: left; }
+    #right { grid-area: right; }
+  </style>
+</head>
+<body>
+
+<div id="container">
+  <div id="placeholder">[ Placeholder Image ]</div>
+
+  <div id="dpad">
+    <button id="up" class="dir-button">↑</button>
+    <button id="left" class="dir-button">←</button>
+    <button id="right" class="dir-button">→</button>
+    <button id="down" class="dir-button">↓</button>
+  </div>
+</div>
+
+<script>
+  const directions = ['up', 'down', 'left', 'right'];
+  const intervals = {};
+
+  function handleMove(dir) {
+    console.log('Move', dir);
+    // Hook into game logic here
+  }
+
+  directions.forEach(dir => {
+    const btn = document.getElementById(dir);
+
+    btn.addEventListener('touchstart', e => {
+      e.preventDefault();
+      handleMove(dir);
+      intervals[dir] = setInterval(() => handleMove(dir), 150);
+    });
+
+    btn.addEventListener('touchend', () => clearInterval(intervals[dir]));
+    btn.addEventListener('touchcancel', () => clearInterval(intervals[dir]));
+  });
+</script>
+
+</body>
+</html>

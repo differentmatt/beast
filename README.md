@@ -1,6 +1,6 @@
 # Beast
 
-A grid-based puzzle game built with Next.js where players navigate through procedurally generated levels, pushing blocks to trap beasts. The game features progressive difficulty with increasingly challenging levels.
+Testing latest AI coding tools by building a clone of classic [MS-DOS game Beast](https://en.wikipedia.org/wiki/Beast_(video_game).
 
 ## Game Features
 

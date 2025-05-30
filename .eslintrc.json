@@ -1,0 +1,14 @@
+{
+  "extends": "next/core-web-vitals",
+  "overrides": [
+    {
+      "files": ["*.cjs"],
+      "parserOptions": {
+        "sourceType": "commonjs"
+      },
+      "rules": {
+        "import/no-commonjs": "off"
+      }
+    }
+  ]
+}

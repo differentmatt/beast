@@ -1,18 +1,20 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
+import { useState, useEffect, useRef } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
-import { RefreshCw } from "lucide-react"
+import { RefreshCw, Play, ArrowRight, Home } from "lucide-react"
 import StatusBar from "@/app/components/StatusBar"
 import DPad from "@/app/components/DPad"
-import GameCanvas from "@/app/components/GameCanvas"
+import GameCanvas, { GameCanvasHandles } from "@/app/components/GameCanvas"
 import { LevelData } from "../types/game"
-import { getLevelInfo } from "../data/levels"
+import { getLevelInfo, campaignLevels, userLevels } from "../data/levels"
 
 export default function GameArea() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const levelId = searchParams.get("level") || "1"
+  const gameCanvasRef = useRef<GameCanvasHandles>(null)
 
   const [score, setScore] = useState(0)
   const [level, setLevel] = useState(1)
@@ -22,6 +24,9 @@ export default function GameArea() {
   const [beastsLeft, setBeastsLeft] = useState(5)
   const [lives, setLives] = useState(3)
   const [gameSpeed, setGameSpeed] = useState(1.0)
+  const [gameState, setGameState] = useState<"playing" | "paused-died" | "game-over">("playing")
+  const [actualLives, setActualLives] = useState(3)
+  const [levelCompleted, setLevelCompleted] = useState(false)
 
   // Check device and orientation with improved detection for iOS
   useEffect(() => {
@@ -68,33 +73,93 @@ export default function GameArea() {
     return () => clearInterval(timer)
   }, [])
 
+  // Poll game state from canvas
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout | null = null
+
+    const pollGameState = () => {
+      if (gameCanvasRef.current) {
+        const currentState = gameCanvasRef.current.getGameState()
+        const currentLives = gameCanvasRef.current.getLives()
+        const isCompleted = gameCanvasRef.current.isLevelCompleted()
+
+        // Only update if values have actually changed to avoid unnecessary re-renders
+        setGameState(prevState => prevState !== currentState ? currentState : prevState)
+        setActualLives(prevLives => prevLives !== currentLives ? currentLives : prevLives)
+        setLevelCompleted(prevCompleted => prevCompleted !== isCompleted ? isCompleted : prevCompleted)
+      }
+    }
+
+    // Small delay before starting polling to ensure game is initialized
+    const timeoutId = setTimeout(() => {
+      intervalId = setInterval(pollGameState, 200) // Poll every 200ms (less aggressive)
+    }, 200)
+
+    return () => {
+      clearTimeout(timeoutId)
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [])
+
   const handleRestart = () => {
     setScore(0)
     setLevel(1)
     setTime(0)
     setBeastsLeft(5)
     setLives(3)
+    setGameState("playing")
+    setActualLives(3)
+    setLevelCompleted(false)
+    // Restart will reload the component, resetting the scene
+    window.location.reload()
+  }
+
+  const handleContinue = () => {
+    if (gameCanvasRef.current) {
+      gameCanvasRef.current.triggerRespawn()
+    }
   }
 
   const handleMove = (direction: string) => {
-    // This would connect to your game logic
-    console.log(`Move: ${direction}`)
-    // Simulate score increase for demo
-    setScore((prev) => prev + 1)
-
-    // Level up every 10 points
-    if (score > 0 && score % 10 === 0) {
-      setLevel((prev) => prev + 1)
-      setBeastsLeft(5) // Reset beasts for new level
-    }
-
-    // Simulate beast defeat occasionally
-    if (score > 0 && score % 3 === 0 && beastsLeft > 0) {
-      setBeastsLeft((prev) => prev - 1)
+    // Forward movement to the game canvas
+    if (gameCanvasRef.current) {
+      gameCanvasRef.current.move(direction as any)
     }
   }
 
   const levelInfo = getLevelInfo(levelId)
+
+  // Helper functions to determine level type and navigation
+  const isCampaignLevel = (id: string): boolean => {
+    return campaignLevels.some(level => level.id.toString() === id)
+  }
+
+  const getNextCampaignLevel = (currentId: string): string | null => {
+    const currentLevel = campaignLevels.find(level => level.id.toString() === currentId)
+    if (!currentLevel) return null
+
+    const nextLevel = campaignLevels.find(level => level.id === currentLevel.id + 1)
+    return nextLevel ? nextLevel.id.toString() : null
+  }
+
+  const handleLevelCompleted = () => {
+    setLevelCompleted(true)
+  }
+
+  const handleNextLevel = () => {
+    const nextLevelId = getNextCampaignLevel(levelId)
+    if (nextLevelId) {
+      router.push(`/play?level=${nextLevelId}`)
+    }
+  }
+
+  const handleBackToLevels = () => {
+    if (isCampaignLevel(levelId)) {
+      router.push("/")
+    } else {
+      router.push("/?tab=your-levels")
+    }
+  }
 
   // Set initial game parameters based on level
   useEffect(() => {
@@ -115,12 +180,69 @@ export default function GameArea() {
             } flex items-center justify-center`}
           >
             <GameCanvas
+              ref={gameCanvasRef}
               level={levelInfo}
               score={score}
               setScore={setScore}
               onBeastDefeated={() => setBeastsLeft((b) => Math.max(0, b - 1))}
               onPlayerDied={() => setLives((l) => l - 1)}
+              onLevelCompleted={handleLevelCompleted}
             />
+
+            {/* Death/Game Over/Level Complete Overlay */}
+            {((gameState === "paused-died" && !levelCompleted) || gameState === "game-over" || levelCompleted) && gameCanvasRef.current && (
+              <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div className="bg-gray-900/90 border border-gray-600 rounded-lg p-6 text-center max-w-sm mx-4">
+                  {levelCompleted ? (
+                    <>
+                      <h2 className="text-2xl font-bold text-green-400 mb-2">Level Completed!</h2>
+                      <p className="text-gray-300 mb-4">Congratulations! You defeated all the beasts.</p>
+                      <p className="text-sm text-gray-400 mb-4">Final Score: {score}</p>
+                      <div className="flex gap-2 justify-center flex-wrap">
+                        <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                          <RefreshCw className="h-4 w-4" />
+                          <span>Restart</span>
+                        </Button>
+                        {isCampaignLevel(levelId) && getNextCampaignLevel(levelId) && (
+                          <Button variant="default" size="sm" onClick={handleNextLevel} className="flex items-center gap-1">
+                            <ArrowRight className="h-4 w-4" />
+                            <span>Next Level</span>
+                          </Button>
+                        )}
+                        <Button variant="secondary" size="sm" onClick={handleBackToLevels} className="flex items-center gap-1">
+                          <Home className="h-4 w-4" />
+                          <span>{isCampaignLevel(levelId) ? "Campaign" : "User Levels"}</span>
+                        </Button>
+                      </div>
+                    </>
+                  ) : gameState === "paused-died" ? (
+                    <>
+                      <h2 className="text-xl font-bold text-red-400 mb-2">You Died!</h2>
+                      <p className="text-gray-300 mb-4">Lives remaining: {actualLives}</p>
+                      <div className="flex gap-2 justify-center">
+                        <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                          <RefreshCw className="h-4 w-4" />
+                          <span>Restart</span>
+                        </Button>
+                        <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
+                          <Play className="h-4 w-4" />
+                          <span>Continue</span>
+                        </Button>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <h2 className="text-2xl font-bold text-red-500 mb-2">Game Over!</h2>
+                      <p className="text-gray-300 mb-4">No lives remaining</p>
+                      <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                        <RefreshCw className="h-4 w-4" />
+                        <span>Restart Game</span>
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {isLandscape && isMobile && (
@@ -132,11 +254,19 @@ export default function GameArea() {
       </div>
 
       <div className={`w-full max-w-3xl mx-auto flex justify-between items-center ${isLandscape ? "mt-1" : "mt-2"}`}>
-        <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
-          <RefreshCw className="h-4 w-4" />
-          <span>Restart</span>
-        </Button>
-        <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={lives} score={score} />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+            <RefreshCw className="h-4 w-4" />
+            <span>Restart</span>
+          </Button>
+          {gameState === "paused-died" && actualLives > 0 && (
+            <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
+              <Play className="h-4 w-4" />
+              <span>Continue</span>
+            </Button>
+          )}
+        </div>
+        <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
       </div>
 
       {isMobile && !isLandscape && (

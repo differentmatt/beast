@@ -128,6 +128,17 @@ export const renderEntity = (entity: GameEntity, options: RenderOptions) => {
           fontStyle: 'bold'
         }).setOrigin(0.5)
         break
+      case "hatchedBeast":
+        // Draw distinctive orange circle for hatched beast
+        graphics.fillStyle(ENTITY_COLORS.hatchedBeast)
+        graphics.fillCircle(centerX, centerY, entitySize / 2)
+        // Add "H" text with darker color for contrast
+        const hatchedBeastText = scene.add.text(centerX, centerY, "H", {
+          fontSize: `${entitySize * 0.8}px`,
+          color: '#000000',
+          fontStyle: 'bold'
+        }).setOrigin(0.5)
+        break
       case "egg":
         graphics.fillStyle(ENTITY_COLORS.egg)
         graphics.fillCircle(centerX, centerY, entitySize / 2)

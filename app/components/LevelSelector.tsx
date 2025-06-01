@@ -1,5 +1,6 @@
 "use client"
 
+import { useSearchParams } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Play, Star, Plus, Lock, Edit } from "lucide-react"
@@ -7,6 +8,9 @@ import Link from "next/link"
 import { campaignLevels, userLevels } from "@/app/data/levels"
 
 export default function LevelSelector() {
+  const searchParams = useSearchParams()
+  const tab = searchParams.get("tab") || "campaign"
+
   const formatLevelName = (name: string) => {
     return name
       .split("-")
@@ -28,7 +32,7 @@ export default function LevelSelector() {
           <h1 className="text-2xl font-bold">Select Level</h1>
         </div>
 
-        <Tabs defaultValue="campaign" className="w-full">
+        <Tabs defaultValue={tab === "your-levels" ? "your-levels" : "campaign"} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="campaign">Campaign</TabsTrigger>
             <TabsTrigger value="your-levels">Your Levels</TabsTrigger>

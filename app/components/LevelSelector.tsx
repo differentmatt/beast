@@ -4,91 +4,7 @@ import { Button } from "@/app/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs"
 import { Play, Star, Plus, Lock, Edit } from "lucide-react"
 import Link from "next/link"
-
-// Campaign levels data
-const campaignLevels = [
-  {
-    id: 1,
-    name: "forest-clearing",
-    beasts: 3,
-    superBeasts: 0,
-    eggs: 2,
-    height: 10,
-    width: 10,
-    gameSpeed: 0.8,
-    completed: true,
-  },
-  {
-    id: 2,
-    name: "dark-woods",
-    beasts: 5,
-    superBeasts: 1,
-    eggs: 3,
-    height: 12,
-    width: 12,
-    gameSpeed: 1.0,
-    completed: true,
-  },
-  {
-    id: 3,
-    name: "mountain-peak",
-    beasts: 8,
-    superBeasts: 2,
-    eggs: 4,
-    height: 15,
-    width: 15,
-    gameSpeed: 1.2,
-    completed: false,
-  },
-  {
-    id: 4,
-    name: "crystal-caves",
-    beasts: 12,
-    superBeasts: 3,
-    eggs: 6,
-    height: 18,
-    width: 18,
-    gameSpeed: 1.5,
-    completed: false,
-  },
-]
-
-// User levels data
-const userLevels = [
-  {
-    id: 101,
-    name: "speed-arena",
-    beasts: 4,
-    superBeasts: 0,
-    eggs: 1,
-    height: 8,
-    width: 8,
-    gameSpeed: 1.3,
-    createdDate: "2024-01-15",
-  },
-  {
-    id: 102,
-    name: "maze-challenge",
-    beasts: 6,
-    superBeasts: 2,
-    eggs: 3,
-    height: 20,
-    width: 20,
-    gameSpeed: 0.9,
-    createdDate: "2024-01-10",
-  },
-  {
-    id: 103,
-    name: "peaceful-garden",
-    beasts: 2,
-    superBeasts: 0,
-    eggs: 5,
-    height: 12,
-    width: 12,
-    gameSpeed: 0.7,
-    createdDate: "2024-01-08",
-  },
-]
+import { campaignLevels, userLevels } from "@/app/data/levels"
 
 export default function LevelSelector() {
   const formatLevelName = (name: string) => {
@@ -132,7 +48,7 @@ export default function LevelSelector() {
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-2">
                         {level.completed && <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />}
-                        <span className="font-medium">{formatLevelName(level.name)}</span>
+                        <span className="font-medium">{level.name}</span>
                       </div>
                     </div>
 
@@ -176,7 +92,7 @@ export default function LevelSelector() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="flex flex-col">
-                      <span className="font-medium">{formatLevelName(level.name)}</span>
+                      <span className="font-medium">{level.name}</span>
                       <span className="text-xs text-muted-foreground">{formatDate(level.createdDate)}</span>
                     </div>
                   </div>

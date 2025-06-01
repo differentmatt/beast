@@ -6,6 +6,9 @@ import { Button } from "@/app/components/ui/button"
 import { RefreshCw } from "lucide-react"
 import StatusBar from "@/app/components/StatusBar"
 import DPad from "@/app/components/DPad"
+import GameCanvas from "@/app/components/GameCanvas"
+import { LevelData } from "../types/game"
+import { getLevelInfo } from "../data/levels"
 
 export default function GameArea() {
   const searchParams = useSearchParams()
@@ -91,20 +94,7 @@ export default function GameArea() {
     }
   }
 
-  const getLevelInfo = (id: string) => {
-    const allLevels = {
-      "1": { name: "Forest Clearing", beasts: 3, gameSpeed: 0.8 },
-      "2": { name: "Dark Woods", beasts: 5, gameSpeed: 1.0 },
-      "3": { name: "Mountain Peak", beasts: 8, gameSpeed: 1.2 },
-      "4": { name: "Crystal Caves", beasts: 12, gameSpeed: 1.5 },
-      "101": { name: "Speed Arena", beasts: 4, gameSpeed: 1.3 },
-      "102": { name: "Maze Challenge", beasts: 6, gameSpeed: 0.9 },
-      "103": { name: "Peaceful Garden", beasts: 2, gameSpeed: 0.7 },
-    }
-    return allLevels[id as keyof typeof allLevels] || { name: "Unknown Level", beasts: 5, gameSpeed: 1.0 }
-  }
-
-  const currentLevel = getLevelInfo(levelId)
+  const levelInfo = getLevelInfo(levelId)
 
   // Set initial game parameters based on level
   useEffect(() => {
@@ -121,17 +111,16 @@ export default function GameArea() {
             className={`relative ${isLandscape ? "flex-1" : "w-full"} ${
               isLandscape
                 ? "h-full" // In landscape, take full available height
-                : "aspect-square max-h-[70vh]" // In portrait, keep square but limit height
-            } bg-muted rounded-lg border-2 border-border flex items-center justify-center text-muted-foreground`}
+                : "max-h-[70vh]" // In portrait, just limit height
+            } flex items-center justify-center`}
           >
-            <div className="text-center">
-              <p className="font-semibold">{currentLevel.name}</p>
-              <p className="text-xs">Level ID: {levelId}</p>
-              <p className="text-xs">Speed: ×{currentLevel.gameSpeed}</p>
-              <p className="text-xs mt-2">
-                {isLandscape ? "Landscape Mode" : "Portrait Mode"} - {isMobile ? "Mobile" : "Desktop"}
-              </p>
-            </div>
+            <GameCanvas
+              level={levelInfo}
+              score={score}
+              setScore={setScore}
+              onBeastDefeated={() => setBeastsLeft((b) => Math.max(0, b - 1))}
+              onPlayerDied={() => setLives((l) => l - 1)}
+            />
           </div>
 
           {isLandscape && isMobile && (

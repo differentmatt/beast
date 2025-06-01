@@ -1,4 +1,10 @@
-import GameArea from "@/app/components/GameArea"
+"use client"
+
+import dynamic from 'next/dynamic'
+
+const GameArea = dynamic(() => import("@/app/components/GameArea"), {
+  ssr: false
+})
 
 export default function PlayPage() {
   return (

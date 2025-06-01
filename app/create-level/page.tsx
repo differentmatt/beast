@@ -9,16 +9,10 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Settings } from "lucide-react"
-
-interface LevelData {
-  name: string
-  beasts: number
-  superBeasts: number
-  eggs: number
-  height: number
-  width: number
-  gameSpeed: number
-}
+import { LevelConfig, LevelData } from "@/app/types/game"
+import LevelPreview from "../components/LevelPreview"
+import { generateLevelFromConfig } from "@/app/utils/levelGenerator"
+import { getLevelInfo } from "@/app/data/levels"
 
 interface ValidationErrors {
   name?: string
@@ -28,6 +22,8 @@ interface ValidationErrors {
   height?: string
   width?: string
   gameSpeed?: string
+  wallPercentage?: string
+  blockPercentage?: string
 }
 
 interface FieldConfig {
@@ -38,6 +34,7 @@ interface FieldConfig {
   required?: boolean
   pattern?: RegExp
   patternError?: string
+  group: 'entities' | 'settings' | 'dimensions'
   errorMessages: {
     required?: string
     min?: string
@@ -47,13 +44,14 @@ interface FieldConfig {
   }
 }
 
-const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
+const fieldConfigs: Record<keyof LevelConfig, FieldConfig> = {
   name: {
     label: 'Level Name',
     type: 'text',
     required: true,
     pattern: /^[a-zA-Z0-9\s-]+$/,
     patternError: 'Level name can only contain letters, numbers, spaces, and hyphens',
+    group: 'settings',
     errorMessages: {
       required: 'Level name is required',
       min: 'Level name must be at least 3 characters',
@@ -67,6 +65,7 @@ const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
     min: 0,
     max: 100,
     required: true,
+    group: 'entities',
     errorMessages: {
       min: 'Beasts cannot be negative',
       max: 'Beasts cannot exceed 100',
@@ -79,6 +78,7 @@ const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
     min: 0,
     max: 100,
     required: true,
+    group: 'entities',
     errorMessages: {
       min: 'Super beasts cannot be negative',
       max: 'Super beasts cannot exceed 100',
@@ -91,9 +91,52 @@ const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
     min: 0,
     max: 100,
     required: true,
+    group: 'entities',
     errorMessages: {
       min: 'Eggs cannot be negative',
       max: 'Eggs cannot exceed 100',
+      invalidNumber: 'Please enter a valid number'
+    }
+  },
+  gameSpeed: {
+    label: 'Game Speed',
+    type: 'text',
+    min: 0.1,
+    max: 5.0,
+    required: true,
+    group: 'settings',
+    errorMessages: {
+      required: 'Game speed is required',
+      min: 'Game speed must be at least 0.1',
+      max: 'Game speed cannot exceed 5.0',
+      invalidNumber: 'Please enter a valid number'
+    }
+  },
+  wallPercentage: {
+    label: 'Wall Percentage',
+    type: 'text',
+    min: 0,
+    max: 100,
+    required: true,
+    group: 'settings',
+    errorMessages: {
+      required: 'Wall percentage is required',
+      min: 'Wall percentage must be at least 0',
+      max: 'Wall percentage cannot exceed 100',
+      invalidNumber: 'Please enter a valid number'
+    }
+  },
+  blockPercentage: {
+    label: 'Block Percentage',
+    type: 'text',
+    min: 0,
+    max: 100,
+    required: true,
+    group: 'settings',
+    errorMessages: {
+      required: 'Block percentage is required',
+      min: 'Block percentage must be at least 0',
+      max: 'Block percentage cannot exceed 100',
       invalidNumber: 'Please enter a valid number'
     }
   },
@@ -103,6 +146,7 @@ const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
     min: 5,
     max: 200,
     required: true,
+    group: 'dimensions',
     errorMessages: {
       required: 'Height is required',
       min: 'Height must be at least 5',
@@ -116,23 +160,11 @@ const fieldConfigs: Record<keyof LevelData, FieldConfig> = {
     min: 5,
     max: 200,
     required: true,
+    group: 'dimensions',
     errorMessages: {
       required: 'Width is required',
       min: 'Width must be at least 5',
       max: 'Width cannot exceed 200',
-      invalidNumber: 'Please enter a valid number'
-    }
-  },
-  gameSpeed: {
-    label: 'Game Speed',
-    type: 'text',
-    min: 0.1,
-    max: 5.0,
-    required: true,
-    errorMessages: {
-      required: 'Game speed is required',
-      min: 'Game speed must be at least 0.1',
-      max: 'Game speed cannot exceed 5.0',
       invalidNumber: 'Please enter a valid number'
     }
   }
@@ -147,16 +179,31 @@ export default function CreateLevelPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [isLoadingLevel, setIsLoadingLevel] = useState(isEditing)
   const [errors, setErrors] = useState<ValidationErrors>({})
+  const [generatedLevel, setGeneratedLevel] = useState<LevelData | null>(null)
 
-  const [levelData, setLevelData] = useState<LevelData>({
+  const [levelConfig, setLevelConfig] = useState<LevelConfig>({
     name: "",
-    beasts: 1,
+    beasts: 3,
     superBeasts: 0,
     eggs: 0,
-    height: 50,
-    width: 80,
+    height: 25,
+    width: 40,
     gameSpeed: 1.0,
+    wallPercentage: 2,
+    blockPercentage: 40,
   })
+
+  // Generate level whenever config changes
+  useEffect(() => {
+    const isValid = validateForm(true)
+    if (isValid) {
+      const levelData = generateLevelFromConfig(levelConfig)
+      console.log("Generated level data:", levelData)
+      setGeneratedLevel(levelData)
+    } else {
+      setGeneratedLevel(null)
+    }
+  }, [levelConfig])
 
   // Load existing level data when editing
   useEffect(() => {
@@ -172,7 +219,7 @@ export default function CreateLevelPage() {
       // TODO: Replace with actual API call
       const existingLevel = await getLevelByIdAPI(levelId)
       if (existingLevel) {
-        setLevelData(existingLevel)
+        setLevelConfig(existingLevel)
       }
     } catch (error) {
       console.error("Error loading level:", error)
@@ -182,59 +229,42 @@ export default function CreateLevelPage() {
   }
 
   // Stub function for getting level by ID - to be connected later
-  const getLevelByIdAPI = async (levelId: string): Promise<LevelData | null> => {
-    // Simulate API call delay
-    await new Promise((resolve) => setTimeout(resolve, 500))
-
-    // Mock data for existing levels
-    const mockLevels: Record<string, LevelData> = {
-      "101": {
-        name: "speed-arena",
-        beasts: 4,
-        superBeasts: 0,
-        eggs: 1,
-        height: 8,
-        width: 8,
-        gameSpeed: 1.3,
-      },
-      "102": {
-        name: "maze-challenge",
-        beasts: 6,
-        superBeasts: 2,
-        eggs: 3,
-        height: 20,
-        width: 20,
-        gameSpeed: 0.9,
-      },
-      "103": {
-        name: "peaceful-garden",
-        beasts: 2,
-        superBeasts: 0,
-        eggs: 5,
-        height: 12,
-        width: 12,
-        gameSpeed: 0.7,
-      },
+  const getLevelByIdAPI = async (levelId: string): Promise<LevelConfig | null> => {
+    try {
+      const levelData = getLevelInfo(levelId)
+      // Convert LevelData to LevelConfig by removing extra fields
+      const levelConfig: LevelConfig = {
+        name: levelData.name,
+        beasts: levelData.beasts,
+        superBeasts: levelData.superBeasts,
+        eggs: levelData.eggs,
+        height: levelData.height,
+        width: levelData.width,
+        gameSpeed: levelData.gameSpeed,
+        wallPercentage: levelData.wallPercentage,
+        blockPercentage: levelData.blockPercentage,
+      }
+      return levelConfig
+    } catch (error) {
+      console.error("Error loading level:", error)
+      return null
     }
-
-    console.log("Loading level data for ID:", levelId)
-    return mockLevels[levelId] || null
   }
 
-  const validateForm = (): boolean => {
+  const validateForm = (forPreview: boolean = false): boolean => {
     const newErrors: ValidationErrors = {}
 
     Object.entries(fieldConfigs).forEach(([field, config]) => {
-      const value = levelData[field as keyof LevelData]
+      const value = levelConfig[field as keyof LevelConfig]
       const fieldErrors: string[] = []
 
-      // Required check - only for empty strings, not for 0
-      if (config.required && value === '') {
+      // Required check - only for name field and only when not previewing
+      if (field === 'name' && config.required && value === '' && !forPreview) {
         fieldErrors.push(config.errorMessages.required || 'This field is required')
       }
 
       // Pattern check for text fields
-      if (config.pattern && typeof value === 'string') {
+      if (config.pattern && typeof value === 'string' && value !== '') {
         if (!config.pattern.test(value)) {
           fieldErrors.push(config.patternError || config.errorMessages.pattern || 'Invalid format')
         }
@@ -242,18 +272,15 @@ export default function CreateLevelPage() {
 
       // Number validation for numeric fields
       if (field !== 'name') {
-        // Only validate numbers if there's a value
-        if (value !== '') {
-          const numValue = Number(value)
-          if (isNaN(numValue)) {
-            fieldErrors.push(config.errorMessages.invalidNumber || 'Please enter a valid number')
-          } else {
-            if (config.min !== undefined && numValue < config.min) {
-              fieldErrors.push(config.errorMessages.min || `Must be at least ${config.min}`)
-            }
-            if (config.max !== undefined && numValue > config.max) {
-              fieldErrors.push(config.errorMessages.max || `Cannot exceed ${config.max}`)
-            }
+        const numValue = value === '' ? 0 : Number(value)
+        if (isNaN(numValue)) {
+          fieldErrors.push(config.errorMessages.invalidNumber || 'Please enter a valid number')
+        } else {
+          if (config.min !== undefined && numValue < config.min) {
+            fieldErrors.push(config.errorMessages.min || `Must be at least ${config.min}`)
+          }
+          if (config.max !== undefined && numValue > config.max) {
+            fieldErrors.push(config.errorMessages.max || `Cannot exceed ${config.max}`)
           }
         }
       }
@@ -264,9 +291,9 @@ export default function CreateLevelPage() {
     })
 
     // Must have at least 1 of either beast, superbeast, or egg
-    const beasts = Number(levelData.beasts) || 0
-    const superBeasts = Number(levelData.superBeasts) || 0
-    const eggs = Number(levelData.eggs) || 0
+    const beasts = Number(levelConfig.beasts) || 0
+    const superBeasts = Number(levelConfig.superBeasts) || 0
+    const eggs = Number(levelConfig.eggs) || 0
     if (beasts === 0 && superBeasts === 0 && eggs === 0) {
       newErrors.beasts = "Must have at least 1 of either beast, superbeast, or egg"
     }
@@ -276,7 +303,7 @@ export default function CreateLevelPage() {
   }
 
   // Stub function for API calls - to be connected later
-  const createLevelAPI = async (data: LevelData): Promise<{ id: number; success: boolean }> => {
+  const createLevelAPI = async (data: LevelConfig): Promise<{ id: number; success: boolean }> => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -289,7 +316,7 @@ export default function CreateLevelPage() {
     return { id: newId, success: true }
   }
 
-  const updateLevelAPI = async (levelId: string, data: LevelData): Promise<{ success: boolean }> => {
+  const updateLevelAPI = async (levelId: string, data: LevelConfig): Promise<{ success: boolean }> => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
@@ -301,22 +328,25 @@ export default function CreateLevelPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!validateForm()) {
+    if (!validateForm(false)) {
       return
     }
 
     setIsLoading(true)
 
     try {
+      // Generate the level data from the config
+      const generatedLevel = generateLevelFromConfig(levelConfig)
+
       if (isEditing && editingLevelId) {
         // Update existing level
-        const result = await updateLevelAPI(editingLevelId, levelData)
+        const result = await updateLevelAPI(editingLevelId, generatedLevel)
         if (result.success) {
           router.push(`/play?level=${editingLevelId}`)
         }
       } else {
         // Create new level
-        const result = await createLevelAPI(levelData)
+        const result = await createLevelAPI(generatedLevel)
         if (result.success) {
           router.push(`/play?level=${result.id}`)
         }
@@ -328,12 +358,23 @@ export default function CreateLevelPage() {
     }
   }
 
-  const handleInputChange = (field: keyof LevelData, value: string) => {
-    // For non-name fields, keep the raw string value
-    // This allows empty inputs and partial numbers
-    setLevelData((prev) => ({
+  const handleInputChange = (field: keyof LevelConfig, value: string) => {
+    let parsedValue: string | number = value
+
+    // Parse numeric fields only if there's a value
+    if (value !== '') {
+      if (field === "beasts" || field === "superBeasts" || field === "eggs" || field === "height" || field === "width") {
+        const intValue = Number.parseInt(value)
+        parsedValue = Number.isNaN(intValue) ? '' : intValue
+      } else if (field === "gameSpeed") {
+        const floatValue = Number.parseFloat(value)
+        parsedValue = Number.isNaN(floatValue) ? '' : floatValue
+      }
+    }
+
+    setLevelConfig((prev) => ({
       ...prev,
-      [field]: value,
+      [field]: parsedValue,
     }))
 
     // Clear error for this field when user starts typing
@@ -357,66 +398,95 @@ export default function CreateLevelPage() {
 
   return (
     <div className="flex-1 overflow-auto p-6">
-      <div className="max-w-2xl mx-auto space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              Level Parameters
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {Object.entries(fieldConfigs).map(([field, config]) => (
-                  <div key={field} className={field === 'name' ? 'sm:col-span-2' : ''}>
-                    <Label htmlFor={field} className="flex justify-between">
-                      <span>{config.label}</span>
-                      {config.min !== undefined && config.max !== undefined && (
-                        <span className="text-xs text-muted-foreground">
-                          {config.min}-{config.max}
-                        </span>
-                      )}
-                    </Label>
-                    <Input
-                      id={field}
-                      type={config.type}
-                      value={levelData[field as keyof LevelData].toString()}
-                      onChange={(e) => handleInputChange(field as keyof LevelData, e.target.value)}
-                      className={errors[field as keyof ValidationErrors] ? "border-red-500" : ""}
-                    />
-                    {errors[field as keyof ValidationErrors] && (
-                      <p className="text-sm text-red-500 mt-1">{errors[field as keyof ValidationErrors]}</p>
+      <div className="max-w-[1600px] mx-auto">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Form Section */}
+          <Card className="w-[400px] shrink-0">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Settings className="h-4 w-4" />
+                Level Parameters
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-3">
+                {/* Level name field spanning both columns */}
+                <div>
+                  <Label htmlFor="name" className="flex justify-between">
+                    <span>{fieldConfigs.name.label}</span>
+                    {(fieldConfigs.name.min !== undefined || fieldConfigs.name.max !== undefined) && (
+                      <span className="text-xs text-muted-foreground">
+                        {fieldConfigs.name.min}-{fieldConfigs.name.max}
+                      </span>
                     )}
-                  </div>
-                ))}
-              </div>
+                  </Label>
+                  <Input
+                    id="name"
+                    type="text"
+                    value={levelConfig.name.toString()}
+                    onChange={(e) => handleInputChange("name", e.target.value)}
+                    className={errors.name ? "border-red-500" : ""}
+                  />
+                  {errors.name && <p className="text-sm text-red-500 mt-1">{errors.name}</p>}
+                </div>
 
-              <div className="pt-4">
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading
-                    ? isEditing
-                      ? "Updating Level..."
-                      : "Creating Level..."
-                    : isEditing
-                      ? "Update Level"
-                      : "Create Level"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+                {/* Two-column grid for remaining fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  {Object.entries(fieldConfigs)
+                    .filter(([field]) => field !== 'name')
+                    .map(([field, config]) => (
+                      <div key={field}>
+                        <Label htmlFor={field} className="flex justify-between">
+                          <span>{config.label}</span>
+                          {(config.min !== undefined || config.max !== undefined) && (
+                            <span className="text-xs text-muted-foreground">
+                              {config.min}-{config.max}
+                            </span>
+                          )}
+                        </Label>
+                        <Input
+                          id={field}
+                          type="text"
+                          value={levelConfig[field as keyof LevelConfig].toString()}
+                          onChange={(e) => handleInputChange(field as keyof LevelConfig, e.target.value)}
+                          className={errors[field as keyof ValidationErrors] ? "border-red-500" : ""}
+                        />
+                        {errors[field as keyof ValidationErrors] && (
+                          <p className="text-sm text-red-500 mt-1">
+                            {errors[field as keyof ValidationErrors]}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                </div>
 
-        <div className="text-sm text-muted-foreground space-y-1">
-          <p>
-            <strong>Tips:</strong>
-          </p>
-          <ul className="list-disc list-inside space-y-1">
-            <li>Level names should be descriptive and unique</li>
-            <li>Super beasts are stronger versions of regular beasts</li>
-            <li>Game speed affects how fast everything moves (1.0 = normal)</li>
-            <li>Larger levels are more challenging but give more space</li>
-          </ul>
+                <div className="pt-2">
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading
+                      ? isEditing
+                        ? "Updating Level..."
+                        : "Creating Level..."
+                      : isEditing
+                        ? "Update Level"
+                        : "Create Level"}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Preview Section */}
+          <div className="flex-1 min-w-[300px]">
+            {generatedLevel ? (
+              <LevelPreview levelData={generatedLevel} />
+            ) : (
+              <Card className="h-full flex items-center justify-center">
+                <CardContent className="text-center text-muted-foreground">
+                  <p>Fill in valid level parameters to see a preview</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </div>
       </div>
     </div>

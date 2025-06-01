@@ -170,79 +170,98 @@ export default function GameArea() {
 
   return (
     <div className={`flex flex-col h-full ${isLandscape ? "p-2" : "p-4"}`}>
-      <div className={`flex-1 flex ${isLandscape ? "flex-row gap-2" : "flex-col items-center justify-center"}`}>
+      <div className={`flex-1 flex ${isLandscape ? "flex-row gap-2" : "flex-col items-start"}`}>
         <div className={`w-full max-w-3xl mx-auto ${isLandscape ? "flex flex-row gap-2" : ""}`}>
-          <div
-            className={`relative ${isLandscape ? "flex-1" : "w-full"} ${
-              isLandscape
-                ? "h-full" // In landscape, take full available height
-                : "max-h-[70vh]" // In portrait, just limit height
-            } flex items-center justify-center`}
-          >
-            <GameCanvas
-              ref={gameCanvasRef}
-              level={levelInfo}
-              score={score}
-              setScore={setScore}
-              onBeastDefeated={() => setBeastsLeft((b) => Math.max(0, b - 1))}
-              onPlayerDied={() => setLives((l) => l - 1)}
-              onLevelCompleted={handleLevelCompleted}
-            />
+          <div className="flex flex-col w-full">
+            <div
+              className={`relative ${isLandscape ? "flex-1" : "w-full"} ${
+                isLandscape
+                  ? "h-full" // In landscape, take full available height
+                  : "min-h-[50vh] max-h-[70vh]" // In portrait, set both min and max height
+              } flex items-center justify-center transition-all duration-200`}
+            >
+              <GameCanvas
+                ref={gameCanvasRef}
+                level={levelInfo}
+                score={score}
+                setScore={setScore}
+                onBeastDefeated={() => setBeastsLeft((b) => Math.max(0, b - 1))}
+                onPlayerDied={() => setLives((l) => l - 1)}
+                onLevelCompleted={handleLevelCompleted}
+              />
 
-            {/* Death/Game Over/Level Complete Overlay */}
-            {((gameState === "paused-died" && !levelCompleted) || gameState === "game-over" || levelCompleted) && gameCanvasRef.current && (
-              <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
-                <div className="bg-gray-900/90 border border-gray-600 rounded-lg p-6 text-center max-w-sm mx-4">
-                  {levelCompleted ? (
-                    <>
-                      <h2 className="text-2xl font-bold text-green-400 mb-2">Level Completed!</h2>
-                      <p className="text-gray-300 mb-4">Congratulations! You defeated all the beasts.</p>
-                      <p className="text-sm text-gray-400 mb-4">Final Score: {score}</p>
-                      <div className="flex gap-2 justify-center flex-wrap">
-                        <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
-                          <RefreshCw className="h-4 w-4" />
-                          <span>Restart</span>
-                        </Button>
-                        {isCampaignLevel(levelId) && getNextCampaignLevel(levelId) && (
-                          <Button variant="default" size="sm" onClick={handleNextLevel} className="flex items-center gap-1">
-                            <ArrowRight className="h-4 w-4" />
-                            <span>Next Level</span>
+              {/* Death/Game Over/Level Complete Overlay */}
+              {((gameState === "paused-died" && !levelCompleted) || gameState === "game-over" || levelCompleted) && gameCanvasRef.current && (
+                <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
+                  <div className="bg-gray-900/90 border border-gray-600 rounded-lg p-6 text-center max-w-sm mx-4">
+                    {levelCompleted ? (
+                      <>
+                        <h2 className="text-2xl font-bold text-green-400 mb-2">Level Completed!</h2>
+                        <p className="text-gray-300 mb-4">Congratulations! You defeated all the beasts.</p>
+                        <p className="text-sm text-gray-400 mb-4">Final Score: {score}</p>
+                        <div className="flex gap-2 justify-center flex-wrap">
+                          <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Restart</span>
                           </Button>
-                        )}
-                        <Button variant="secondary" size="sm" onClick={handleBackToLevels} className="flex items-center gap-1">
-                          <Home className="h-4 w-4" />
-                          <span>{isCampaignLevel(levelId) ? "Campaign" : "User Levels"}</span>
-                        </Button>
-                      </div>
-                    </>
-                  ) : gameState === "paused-died" ? (
-                    <>
-                      <h2 className="text-xl font-bold text-red-400 mb-2">You Died!</h2>
-                      <p className="text-gray-300 mb-4">Lives remaining: {actualLives}</p>
-                      <div className="flex gap-2 justify-center">
+                          {isCampaignLevel(levelId) && getNextCampaignLevel(levelId) && (
+                            <Button variant="default" size="sm" onClick={handleNextLevel} className="flex items-center gap-1">
+                              <ArrowRight className="h-4 w-4" />
+                              <span>Next Level</span>
+                            </Button>
+                          )}
+                          <Button variant="secondary" size="sm" onClick={handleBackToLevels} className="flex items-center gap-1">
+                            <Home className="h-4 w-4" />
+                            <span>{isCampaignLevel(levelId) ? "Campaign" : "User Levels"}</span>
+                          </Button>
+                        </div>
+                      </>
+                    ) : gameState === "paused-died" ? (
+                      <>
+                        <h2 className="text-xl font-bold text-red-400 mb-2">You Died!</h2>
+                        <p className="text-gray-300 mb-4">Lives remaining: {actualLives}</p>
+                        <div className="flex gap-2 justify-center">
+                          <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                            <RefreshCw className="h-4 w-4" />
+                            <span>Restart</span>
+                          </Button>
+                          <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
+                            <Play className="h-4 w-4" />
+                            <span>Continue</span>
+                          </Button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h2 className="text-2xl font-bold text-red-500 mb-2">Game Over!</h2>
+                        <p className="text-gray-300 mb-4">No lives remaining</p>
                         <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
                           <RefreshCw className="h-4 w-4" />
-                          <span>Restart</span>
+                          <span>Restart Game</span>
                         </Button>
-                        <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
-                          <Play className="h-4 w-4" />
-                          <span>Continue</span>
-                        </Button>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <h2 className="text-2xl font-bold text-red-500 mb-2">Game Over!</h2>
-                      <p className="text-gray-300 mb-4">No lives remaining</p>
-                      <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
-                        <RefreshCw className="h-4 w-4" />
-                        <span>Restart Game</span>
-                      </Button>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
+              )}
+            </div>
+
+            {/* Status Bar with Restart Button - Now directly below game area */}
+            <div className={`w-full flex justify-between items-center ${isLandscape ? "mt-1" : "mt-2"}`}>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
+                  <RefreshCw className="h-4 w-4" />
+                  <span>Restart</span>
+                </Button>
+                {gameState === "paused-died" && actualLives > 0 && (
+                  <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
+                    <Play className="h-4 w-4" />
+                    <span>Continue</span>
+                  </Button>
+                )}
               </div>
-            )}
+              <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
+            </div>
           </div>
 
           {isLandscape && isMobile && (
@@ -251,22 +270,6 @@ export default function GameArea() {
             </div>
           )}
         </div>
-      </div>
-
-      <div className={`w-full max-w-3xl mx-auto flex justify-between items-center ${isLandscape ? "mt-1" : "mt-2"}`}>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
-            <RefreshCw className="h-4 w-4" />
-            <span>Restart</span>
-          </Button>
-          {gameState === "paused-died" && actualLives > 0 && (
-            <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
-              <Play className="h-4 w-4" />
-              <span>Continue</span>
-            </Button>
-          )}
-        </div>
-        <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
       </div>
 
       {isMobile && !isLandscape && (

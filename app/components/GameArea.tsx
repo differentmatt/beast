@@ -90,16 +90,17 @@ export default function GameArea() {
       }
     }
 
-    // Small delay before starting polling to ensure game is initialized
+    // Longer delay before starting polling to ensure game is fully initialized
+    // This helps prevent false level completion detection when changing levels
     const timeoutId = setTimeout(() => {
       intervalId = setInterval(pollGameState, 200) // Poll every 200ms (less aggressive)
-    }, 200)
+    }, 500) // Increased delay to 500ms
 
     return () => {
       clearTimeout(timeoutId)
       if (intervalId) clearInterval(intervalId)
     }
-  }, [])
+  }, [levelId])
 
   const handleRestart = () => {
     setScore(0)
@@ -149,7 +150,8 @@ export default function GameArea() {
   const handleNextLevel = () => {
     const nextLevelId = getNextCampaignLevel(levelId)
     if (nextLevelId) {
-      router.push(`/play?level=${nextLevelId}`)
+      // Force a full page reload to ensure clean state
+      window.location.href = `/play?level=${nextLevelId}`
     }
   }
 
@@ -166,6 +168,8 @@ export default function GameArea() {
     const levelInfo = getLevelInfo(levelId)
     setBeastsLeft(levelInfo.beasts)
     setGameSpeed(levelInfo.gameSpeed)
+    setLevelCompleted(false) // Reset level completed state when level changes
+    setGameState("playing") // Reset game state when level changes
   }, [levelId])
 
   return (
@@ -191,7 +195,7 @@ export default function GameArea() {
               />
 
               {/* Death/Game Over/Level Complete Overlay */}
-              {((gameState === "paused-died" && !levelCompleted) || gameState === "game-over" || levelCompleted) && gameCanvasRef.current && (
+              {gameCanvasRef.current && ((gameState === "paused-died" && !levelCompleted) || gameState === "game-over" || levelCompleted) && (
                 <div className="absolute inset-0 bg-black/70 flex items-center justify-center z-50">
                   <div className="bg-gray-900/90 border border-gray-600 rounded-lg p-6 text-center max-w-sm mx-4">
                     {levelCompleted ? (
@@ -253,12 +257,7 @@ export default function GameArea() {
                   <RefreshCw className="h-4 w-4" />
                   <span>Restart</span>
                 </Button>
-                {gameState === "paused-died" && actualLives > 0 && (
-                  <Button variant="default" size="sm" onClick={handleContinue} className="flex items-center gap-1">
-                    <Play className="h-4 w-4" />
-                    <span>Continue</span>
-                  </Button>
-                )}
+
               </div>
               <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
             </div>

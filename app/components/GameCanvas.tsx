@@ -11,6 +11,8 @@ export interface GameCanvasHandles {
   getLives: () => number
   getGameState: () => "playing" | "paused-died" | "game-over"
   isLevelCompleted: () => boolean
+  started?: boolean
+  startGame?: () => void
 }
 
 interface GameCanvasProps {
@@ -29,7 +31,7 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
   useImperativeHandle(ref, () => ({
     move: (dir) => {
       // Trigger movement through the input system
-      if (sceneRef.current && sceneRef.current.input.keyboard) {
+      if (sceneRef.current) {
         const keyMap: { [key: string]: string } = {
           "up": "W",
           "down": "S",
@@ -61,6 +63,16 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
     isLevelCompleted: () => {
       return sceneRef.current ? sceneRef.current.isLevelCompleted() : false
     },
+    // Expose the started property
+    get started() {
+      return sceneRef.current ? sceneRef.current.started : false
+    },
+    // Expose the startGame method
+    startGame: () => {
+      if (sceneRef.current) {
+        sceneRef.current.startGame()
+      }
+    }
   }))
 
   useEffect(() => {
@@ -80,7 +92,10 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
       },
     }
     const game = new Phaser.Game(config)
-    return () => game.destroy(true)
+
+    return () => {
+      game.destroy(true)
+    }
   }, [])
 
   return <div ref={gameRef} className="w-full h-full flex items-center justify-center" />

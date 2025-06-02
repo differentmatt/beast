@@ -70,10 +70,21 @@ export default class BeastScene extends Phaser.Scene {
 
   // Public method for mobile DPad to trigger movement
   handleDirectMove(direction: Direction) {
-    if (!this.started || this.gameState !== "playing") return
+    // Start the game if it hasn't been started yet
+    if (!this.started) {
+      this.startGame()
+    }
+
+    if (this.gameState !== "playing") {
+      return
+    }
 
     const currentTime = this.time.now
-    if (currentTime - this.player.lastMoveTime < this.updateInterval) return
+    const timeSinceLastMove = currentTime - this.player.lastMoveTime
+
+    if (timeSinceLastMove < this.updateInterval) {
+      return
+    }
 
     this.movePlayer(direction)
     this.player.lastMoveTime = currentTime

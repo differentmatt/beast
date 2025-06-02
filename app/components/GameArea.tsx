@@ -64,6 +64,7 @@ export default function GameArea() {
     }
   }, [])
 
+
   // Timer simulation
   useEffect(() => {
     const timer = setInterval(() => {
@@ -173,16 +174,16 @@ export default function GameArea() {
   }, [levelId])
 
   return (
-    <div className={`flex flex-col h-full ${isLandscape ? "p-2" : "p-4"}`}>
-      <div className={`flex-1 flex ${isLandscape ? "flex-row gap-2" : "flex-col items-start"}`}>
-        <div className={`w-full max-w-3xl mx-auto ${isLandscape ? "flex flex-row gap-2" : ""}`}>
+    <div className={`flex flex-col h-full w-full ${isLandscape ? "p-2" : "p-4"}`}>
+      <div className={`flex-1 flex ${isLandscape ? "flex-row gap-2" : "flex-col items-center"}`}>
+        <div className={`w-full max-w-4xl mx-auto ${isLandscape ? "flex flex-row gap-2" : ""}`}>
           <div className="flex flex-col w-full">
             <div
               className={`relative ${isLandscape ? "flex-1" : "w-full"} ${
                 isLandscape
                   ? "h-full" // In landscape, take full available height
-                  : "min-h-[50vh] max-h-[70vh]" // In portrait, set both min and max height
-              } flex items-center justify-center transition-all duration-200`}
+                  : "h-full" // Use full height in portrait mode too
+              } flex items-center justify-center overflow-hidden`}
             >
               <GameCanvas
                 ref={gameCanvasRef}

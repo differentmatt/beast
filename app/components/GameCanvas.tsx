@@ -83,7 +83,7 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
     return () => game.destroy(true)
   }, [])
 
-  return <div ref={gameRef} className="w-full h-full" />
+  return <div ref={gameRef} className="w-full h-full flex items-center justify-center" />
 })
 
 GameCanvas.displayName = "GameCanvas"

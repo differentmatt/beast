@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useImperativeHandle, useRef, forwardRef } from "react"
+import { useEffect, useImperativeHandle, useRef, forwardRef, useLayoutEffect } from "react"
 import * as Phaser from "phaser"
 import BeastScene from "@/app/game/BeastScene"
 import { LevelData } from "../types/game"
@@ -75,14 +75,45 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
     }
   }))
 
+  // Use refs to store the latest prop values
+  const levelRef = useRef(level)
+  const scoreRef = useRef(score)
+  const setScoreRef = useRef(setScore)
+  const onBeastDefeatedRef = useRef(onBeastDefeated)
+  const onPlayerDiedRef = useRef(onPlayerDied)
+  const onLevelCompletedRef = useRef(onLevelCompleted)
+
+  // Update refs when props change
+  useLayoutEffect(() => {
+    levelRef.current = level
+    scoreRef.current = score
+    setScoreRef.current = setScore
+    onBeastDefeatedRef.current = onBeastDefeated
+    onPlayerDiedRef.current = onPlayerDied
+    onLevelCompletedRef.current = onLevelCompleted
+  }, [level, score, setScore, onBeastDefeated, onPlayerDied, onLevelCompleted])
+
+  // Initialize the game only once
   useEffect(() => {
-    const scene = new BeastScene(level, score, setScore, onBeastDefeated, onPlayerDied, undefined, onLevelCompleted)
+    console.log("GameCanvas useEffect - Creating new game instance with level:", levelRef.current.name)
+
+    // Create a scene that uses the ref values
+    const scene = new BeastScene(
+      levelRef.current,
+      scoreRef.current,
+      (newScore: number) => setScoreRef.current(newScore),
+      () => onBeastDefeatedRef.current(),
+      () => onPlayerDiedRef.current(),
+      undefined,
+      onLevelCompletedRef.current ? () => onLevelCompletedRef.current!() : undefined
+    )
+
     sceneRef.current = scene
 
     const config: Phaser.Types.Core.GameConfig = {
       type: Phaser.AUTO,
-      width: (level.width + 2) * 20,
-      height: (level.height + 2) * 20,
+      width: (levelRef.current.width + 2) * 20,
+      height: (levelRef.current.height + 2) * 20,
       backgroundColor: "#000000",
       parent: gameRef.current!,
       scene: [scene],
@@ -94,9 +125,10 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
     const game = new Phaser.Game(config)
 
     return () => {
+      console.log("GameCanvas useEffect - Destroying game instance")
       game.destroy(true)
     }
-  }, [])
+  }, []) // Empty dependency array means this only runs once
 
   return <div ref={gameRef} className="w-full h-full flex items-center justify-center" />
 })

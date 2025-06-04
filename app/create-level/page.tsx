@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
@@ -170,7 +170,7 @@ const fieldConfigs: Record<keyof LevelConfig, FieldConfig> = {
   }
 }
 
-export default function CreateLevelPage() {
+function CreateLevelPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const editingLevelId = searchParams.get("id")
@@ -193,65 +193,8 @@ export default function CreateLevelPage() {
     blockPercentage: 40,
   })
 
-  // Generate level whenever config changes
-  useEffect(() => {
-    const isValid = validateForm(true)
-    if (isValid) {
-      const levelData = generateLevelFromConfig(levelConfig)
-      console.log("Generated level data:", levelData)
-      setGeneratedLevel(levelData)
-    } else {
-      setGeneratedLevel(null)
-    }
-  }, [levelConfig])
-
-  // Load existing level data when editing
-  useEffect(() => {
-    if (isEditing && editingLevelId) {
-      loadLevelData(editingLevelId)
-    }
-  }, [isEditing, editingLevelId])
-
-  // Stub function to load existing level data
-  const loadLevelData = async (levelId: string) => {
-    setIsLoadingLevel(true)
-    try {
-      // TODO: Replace with actual API call
-      const existingLevel = await getLevelByIdAPI(levelId)
-      if (existingLevel) {
-        setLevelConfig(existingLevel)
-      }
-    } catch (error) {
-      console.error("Error loading level:", error)
-    } finally {
-      setIsLoadingLevel(false)
-    }
-  }
-
-  // Stub function for getting level by ID - to be connected later
-  const getLevelByIdAPI = async (levelId: string): Promise<LevelConfig | null> => {
-    try {
-      const levelData = getLevelInfo(levelId)
-      // Convert LevelData to LevelConfig by removing extra fields
-      const levelConfig: LevelConfig = {
-        name: levelData.name,
-        beasts: levelData.beasts,
-        superBeasts: levelData.superBeasts,
-        eggs: levelData.eggs,
-        height: levelData.height,
-        width: levelData.width,
-        gameSpeed: levelData.gameSpeed,
-        wallPercentage: levelData.wallPercentage,
-        blockPercentage: levelData.blockPercentage,
-      }
-      return levelConfig
-    } catch (error) {
-      console.error("Error loading level:", error)
-      return null
-    }
-  }
-
-  const validateForm = (forPreview: boolean = false): boolean => {
+  // Define validateForm with useCallback
+  const validateForm = useCallback((forPreview: boolean = false): boolean => {
     const newErrors: ValidationErrors = {}
 
     Object.entries(fieldConfigs).forEach(([field, config]) => {
@@ -300,7 +243,65 @@ export default function CreateLevelPage() {
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
+  }, [levelConfig]) // fieldConfigs is defined outside the component and doesn't change
+
+  // Stub function to load existing level data - wrapped in useCallback
+  const loadLevelData = useCallback(async (levelId: string) => {
+    setIsLoadingLevel(true)
+    try {
+      // TODO: Replace with actual API call
+      const existingLevel = await getLevelByIdAPI(levelId)
+      if (existingLevel) {
+        setLevelConfig(existingLevel)
+      }
+    } catch (error) {
+      console.error("Error loading level:", error)
+    } finally {
+      setIsLoadingLevel(false)
+    }
+  }, [])
+
+  // Generate level whenever config changes
+  useEffect(() => {
+    const isValid = validateForm(true)
+    if (isValid) {
+      const levelData = generateLevelFromConfig(levelConfig)
+      setGeneratedLevel(levelData)
+    } else {
+      setGeneratedLevel(null)
+    }
+  }, [levelConfig, validateForm])
+
+  // Load existing level data when editing
+  useEffect(() => {
+    if (isEditing && editingLevelId) {
+      loadLevelData(editingLevelId)
+    }
+  }, [isEditing, editingLevelId, loadLevelData])
+
+  // Stub function for getting level by ID - to be connected later
+  const getLevelByIdAPI = async (levelId: string): Promise<LevelConfig | null> => {
+    try {
+      const levelData = getLevelInfo(levelId)
+      // Convert LevelData to LevelConfig by removing extra fields
+      const levelConfig: LevelConfig = {
+        name: levelData.name,
+        beasts: levelData.beasts,
+        superBeasts: levelData.superBeasts,
+        eggs: levelData.eggs,
+        height: levelData.height,
+        width: levelData.width,
+        gameSpeed: levelData.gameSpeed,
+        wallPercentage: levelData.wallPercentage,
+        blockPercentage: levelData.blockPercentage,
+      }
+      return levelConfig
+    } catch (error) {
+      return null
+    }
   }
+
+  // This section was moved up using useCallback
 
   // Stub function for API calls - to be connected later
   const createLevelAPI = async (data: LevelConfig): Promise<{ id: number; success: boolean }> => {
@@ -310,17 +311,12 @@ export default function CreateLevelPage() {
     // Simulate successful creation with a new ID
     const newId = Math.floor(Math.random() * 1000) + 200 // Generate ID starting from 200
 
-    console.log("Creating level with data:", data)
-    console.log("Generated level ID:", newId)
-
     return { id: newId, success: true }
   }
 
   const updateLevelAPI = async (levelId: string, data: LevelConfig): Promise<{ success: boolean }> => {
     // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
-
-    console.log("Updating level ID:", levelId, "with data:", data)
 
     return { success: true }
   }
@@ -352,7 +348,7 @@ export default function CreateLevelPage() {
         }
       }
     } catch (error) {
-      console.error("Error saving level:", error)
+      // Handle error silently
     } finally {
       setIsLoading(false)
     }
@@ -490,5 +486,14 @@ export default function CreateLevelPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Export the default component with Suspense boundary
+export default function CreateLevelPage() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading...</div>}>
+      <CreateLevelPageContent />
+    </Suspense>
   )
 }

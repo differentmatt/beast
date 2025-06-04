@@ -5,6 +5,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import Navbar from "@/app/components/Navbar"
 import { ThemeProvider } from "@/app/components/ThemeProvider"
+import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -23,7 +24,9 @@ export default function RootLayout({
       <body className={`${inter.className} h-screen flex flex-col overflow-hidden`}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark">
-            <Navbar />
+            <Suspense fallback={<div className="h-14 border-b"></div>}>
+              <Navbar />
+            </Suspense>
             <main className="flex-1 flex flex-col overflow-hidden">{children}</main>
           </ThemeProvider>
         </Providers>

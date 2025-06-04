@@ -6,8 +6,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 import { Play, Star, Plus, Lock, Edit } from "lucide-react"
 import Link from "next/link"
 import { campaignLevels, userLevels } from "@/app/data/levels"
+import { Suspense } from "react"
 
-export default function LevelSelector() {
+function LevelSelectorContent() {
   const searchParams = useSearchParams()
   const tab = searchParams.get("tab") || "campaign"
 
@@ -142,5 +143,14 @@ export default function LevelSelector() {
         </Tabs>
       </div>
     </div>
+  )
+}
+
+// Export the default component with Suspense boundary
+export default function LevelSelector() {
+  return (
+    <Suspense fallback={<div className="flex-1 p-6 flex items-center justify-center">Loading levels...</div>}>
+      <LevelSelectorContent />
+    </Suspense>
   )
 }

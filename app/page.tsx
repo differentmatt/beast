@@ -3,6 +3,9 @@ import { getServerSession } from "@/app/auth"
 import Link from "next/link"
 import { Button } from "@/app/components/ui/button"
 
+// Mark this page as dynamic since it uses getServerSession which accesses headers
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const session = await getServerSession()
 

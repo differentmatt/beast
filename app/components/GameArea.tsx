@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
 import { RefreshCw, Play, ArrowRight, Home } from "lucide-react"
@@ -10,7 +10,7 @@ import GameCanvas, { GameCanvasHandles } from "@/app/components/GameCanvas"
 import { LevelData } from "../types/game"
 import { getLevelInfo, campaignLevels, userLevels } from "../data/levels"
 
-export default function GameArea() {
+function GameAreaContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const levelId = searchParams.get("level") || "1"
@@ -278,5 +278,14 @@ export default function GameArea() {
         </div>
       )}
     </div>
+  )
+}
+
+// Export the default component with Suspense boundary
+export default function GameArea() {
+  return (
+    <Suspense fallback={<div className="flex-1 flex items-center justify-center">Loading game...</div>}>
+      <GameAreaContent />
+    </Suspense>
   )
 }

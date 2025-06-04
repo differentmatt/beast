@@ -20,6 +20,8 @@ function GameAreaContent() {
   const [level, setLevel] = useState(1)
   const [time, setTime] = useState(0)
   const [isMobile, setIsMobile] = useState(false)
+  const [isTablet, setIsTablet] = useState(false)
+  const [hasTouchScreen, setHasTouchScreen] = useState(false)
   const [isLandscape, setIsLandscape] = useState(false)
   const [beastsLeft, setBeastsLeft] = useState(5)
   const [lives, setLives] = useState(3)
@@ -28,38 +30,51 @@ function GameAreaContent() {
   const [actualLives, setActualLives] = useState(3)
   const [levelCompleted, setLevelCompleted] = useState(false)
 
-  // Check device and orientation with improved detection for iOS
+  // Check device and orientation with improved detection for iOS and tablets
   useEffect(() => {
-    // Function to check if device is in landscape mode
-    const checkOrientation = () => {
+    // Function to check device type, touch capabilities, and orientation
+    const checkDeviceAndOrientation = () => {
       // Use matchMedia for more reliable orientation detection (works better on iOS)
       const landscape = window.matchMedia("(orientation: landscape)").matches
-      const mobile = window.innerWidth < 768 || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+
+      // Check for mobile devices (phones)
+      const mobile = window.innerWidth < 768 || /iPhone|iPod|Android(?!.*Tablet)|Mobile/i.test(navigator.userAgent)
+
+      // Check specifically for tablets
+      const tablet = /iPad|Android(?=.*Tablet)|Tablet/i.test(navigator.userAgent) ||
+                    (window.innerWidth >= 768 && window.innerWidth <= 1366 && 'ontouchstart' in window)
+
+      // Check for touch screen capabilities
+      const touchScreen = 'ontouchstart' in window ||
+                         navigator.maxTouchPoints > 0 ||
+                         (navigator as any).msMaxTouchPoints > 0
 
       setIsMobile(mobile)
-      setIsLandscape(mobile && landscape)
+      setIsTablet(tablet)
+      setHasTouchScreen(touchScreen)
+      setIsLandscape((mobile || tablet) && landscape)
     }
 
     // Initial check
-    checkOrientation()
+    checkDeviceAndOrientation()
 
     // Listen for orientation changes and resize events
-    window.addEventListener("resize", checkOrientation)
-    window.addEventListener("orientationchange", checkOrientation)
+    window.addEventListener("resize", checkDeviceAndOrientation)
+    window.addEventListener("orientationchange", checkDeviceAndOrientation)
 
     // iOS Safari specific event
     if ("onorientationchange" in window) {
       window.addEventListener("orientationchange", () => {
         // Small delay to ensure iOS has completed the orientation change
-        setTimeout(checkOrientation, 100)
+        setTimeout(checkDeviceAndOrientation, 100)
       })
     }
 
     return () => {
-      window.removeEventListener("resize", checkOrientation)
-      window.removeEventListener("orientationchange", checkOrientation)
+      window.removeEventListener("resize", checkDeviceAndOrientation)
+      window.removeEventListener("orientationchange", checkDeviceAndOrientation)
       if ("onorientationchange" in window) {
-        window.removeEventListener("orientationchange", checkOrientation)
+        window.removeEventListener("orientationchange", checkDeviceAndOrientation)
       }
     }
   }, [])
@@ -264,7 +279,7 @@ function GameAreaContent() {
             </div>
           </div>
 
-          {isLandscape && isMobile && (
+          {isLandscape && (isMobile || (isTablet && hasTouchScreen)) && (
             <div className="flex items-center justify-center">
               <DPad onMove={handleMove} />
             </div>
@@ -272,7 +287,7 @@ function GameAreaContent() {
         </div>
       </div>
 
-      {isMobile && !isLandscape && (
+      {(isMobile || (isTablet && hasTouchScreen)) && !isLandscape && (
         <div className="flex justify-center mt-2">
           <DPad onMove={handleMove} />
         </div>

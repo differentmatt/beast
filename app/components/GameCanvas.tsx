@@ -3,14 +3,16 @@
 import { useEffect, useImperativeHandle, useRef, forwardRef, useLayoutEffect } from "react"
 import * as Phaser from "phaser"
 import BeastScene from "@/app/game/BeastScene"
-import { LevelData } from "../types/game"
+import { LevelData, GameStatus } from "../types/game"
 
 export interface GameCanvasHandles {
   move: (direction: "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right") => void
   triggerRespawn: () => void
   getLives: () => number
-  getGameState: () => "playing" | "paused-died" | "game-over"
+  getGameState: () => GameStatus
   isLevelCompleted: () => boolean
+  togglePause: () => void
+  isPaused: () => boolean
   started?: boolean
   startGame?: () => void
 }
@@ -62,6 +64,14 @@ const GameCanvas = forwardRef<GameCanvasHandles, GameCanvasProps>(({ level, scor
     },
     isLevelCompleted: () => {
       return sceneRef.current ? sceneRef.current.isLevelCompleted() : false
+    },
+    togglePause: () => {
+      if (sceneRef.current) {
+        sceneRef.current.togglePause()
+      }
+    },
+    isPaused: () => {
+      return sceneRef.current ? sceneRef.current.isPaused() : false
     },
     // Expose the started property
     get started() {

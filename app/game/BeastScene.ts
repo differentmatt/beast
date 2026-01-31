@@ -1,5 +1,5 @@
 import * as Phaser from "phaser";
-import { GameEntity, LevelData, Beast, Egg, Player, Direction, Position, MovementResult } from "@/app/types/game"
+import { GameEntity, LevelData, Beast, Egg, Player, Direction, Position, MovementResult, GameStatus } from "@/app/types/game"
 import { ENTITY_COLORS, CGA_COLORS, renderEntity } from "@/app/utils/entityRenderer"
 import { pcSpeaker } from "@/app/utils/sound"
 
@@ -20,9 +20,12 @@ export default class BeastScene extends Phaser.Scene {
   score = 0
   beastsRemaining = 0
   lives = 3
-  gameState: "playing" | "paused-died" | "game-over" = "playing"
+  gameState: GameStatus = "playing"
   initialPlayerPosition: Position = { x: 1, y: 1 }
   messageText: Phaser.GameObjects.Text | null = null
+  pauseKey!: Phaser.Input.Keyboard.Key
+  escapeKey!: Phaser.Input.Keyboard.Key
+  pausedTime = 0 // Track time spent paused for egg timers
 
   // Movement deltas for 8-directional movement
   private readonly directions: { [key in Direction]: Position } = {
@@ -55,6 +58,9 @@ export default class BeastScene extends Phaser.Scene {
     this.cursors = this.input.keyboard!.createCursorKeys()
     // Add WASD keys for additional movement options
     this.wasd = this.input.keyboard!.addKeys('W,S,A,D') as { [key: string]: Phaser.Input.Keyboard.Key }
+    // Add pause keys
+    this.pauseKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.P)
+    this.escapeKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC)
   }
 
   create() {
@@ -107,7 +113,7 @@ export default class BeastScene extends Phaser.Scene {
     return this.lives
   }
 
-  getGameState(): "playing" | "paused-died" | "game-over" {
+  getGameState(): GameStatus {
     return this.gameState
   }
 
@@ -180,6 +186,11 @@ export default class BeastScene extends Phaser.Scene {
 
     const currentTime = this.time.now
 
+    // Handle pause toggle (P or Escape)
+    if (Phaser.Input.Keyboard.JustDown(this.pauseKey) || Phaser.Input.Keyboard.JustDown(this.escapeKey)) {
+      this.togglePause()
+    }
+
     // Handle input based on game state
     if (this.gameState === "playing") {
       // Handle input with 8-directional movement
@@ -191,9 +202,33 @@ export default class BeastScene extends Phaser.Scene {
         this.lastUpdateTime = currentTime
       }
     }
-    // paused-died and game-over states stop updates
+    // paused, paused-died, and game-over states stop updates
 
     this.renderMap()
+  }
+
+  // Toggle pause state
+  togglePause() {
+    if (this.gameState === "playing") {
+      this.gameState = "paused"
+      this.pausedTime = this.time.now
+      this.showMessage("PAUSED\n\nPress P or ESC to resume")
+      pcSpeaker.beep(200, 50, 0.2)
+    } else if (this.gameState === "paused") {
+      // Adjust egg hatch times to account for pause duration
+      const pauseDuration = this.time.now - this.pausedTime
+      for (const egg of this.eggs) {
+        egg.hatchTime += pauseDuration
+      }
+      this.gameState = "playing"
+      this.hideMessage()
+      pcSpeaker.beep(400, 50, 0.2)
+    }
+  }
+
+  // Public method for UI to toggle pause
+  isPaused(): boolean {
+    return this.gameState === "paused"
   }
 
   private handlePlayerInput() {
@@ -892,16 +927,68 @@ export default class BeastScene extends Phaser.Scene {
       })
     }
 
-    // Draw eggs
+    // Draw eggs with hatch timer
+    const currentTime = this.time.now
     for (const egg of this.eggs) {
+      const eggX = (egg.x + 1) * this.gridSize
+      const eggY = (egg.y + 1) * this.gridSize
+
       renderEntity("egg", {
-        x: (egg.x + 1) * this.gridSize,
-        y: (egg.y + 1) * this.gridSize,
+        x: eggX,
+        y: eggY,
         size: this.gridSize,
         graphics,
         scene: this
       })
+
+      // Draw egg hatch timer
+      this.renderEggTimer(egg, eggX, eggY, currentTime)
     }
+  }
+
+  private renderEggTimer(egg: Egg, x: number, y: number, currentTime: number) {
+    const elapsed = currentTime - egg.hatchTime
+    const remaining = Math.max(0, egg.hatchDuration - elapsed)
+    const progress = elapsed / egg.hatchDuration // 0 to 1
+
+    // Show seconds remaining
+    const secondsLeft = Math.ceil(remaining / 1000)
+
+    // Color changes as egg gets closer to hatching
+    let color = '#55FF55' // Green when plenty of time
+    if (secondsLeft <= 3) {
+      color = '#FF5555' // Red when critical
+    } else if (secondsLeft <= 5) {
+      color = '#FFFF55' // Yellow when warning
+    }
+
+    // Draw countdown number
+    const centerX = x + this.gridSize / 2
+    const centerY = y + this.gridSize / 2
+
+    // Draw small countdown text above the egg
+    this.add.text(centerX, y - 2, secondsLeft.toString(), {
+      fontSize: '10px',
+      fontFamily: 'VT323, monospace',
+      color: color,
+    }).setOrigin(0.5, 1)
+
+    // Draw progress bar below egg
+    const barWidth = this.gridSize - 4
+    const barHeight = 3
+    const barX = x + 2
+    const barY = y + this.gridSize - 1
+
+    const graphics = this.add.graphics()
+
+    // Background bar (dark)
+    graphics.fillStyle(0x333333)
+    graphics.fillRect(barX, barY, barWidth, barHeight)
+
+    // Progress fill (changes color based on time)
+    const fillColor = secondsLeft <= 3 ? 0xFF5555 : secondsLeft <= 5 ? 0xFFFF55 : 0x55FF55
+    graphics.fillStyle(fillColor)
+    graphics.fillRect(barX, barY, barWidth * progress, barHeight)
   }
 
   private showMessage(text: string) {

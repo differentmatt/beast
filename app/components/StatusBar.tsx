@@ -15,7 +15,7 @@ export default function StatusBar({ beastsLeft, level, time, lives, score }: Sta
   }
 
   return (
-    <div className="flex gap-2 sm:gap-6 text-xs sm:text-sm items-center">
+    <div className="flex gap-2 sm:gap-6 text-xs sm:text-sm items-center font-dos">
       <div className="flex items-center gap-1">
         <span className="font-medium text-muted-foreground">
           <span className="hidden sm:inline">Beasts</span>

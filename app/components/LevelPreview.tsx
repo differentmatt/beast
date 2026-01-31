@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/ca
 import { Eye } from "lucide-react"
 import { useEffect, useRef } from "react"
 import type { LevelData } from "@/app/types/game"
-import { ENTITY_COLORS, renderEntity } from "@/app/utils/entityRenderer"
+import { CGA_COLORS, hexToColor, renderEntity } from "@/app/utils/entityRenderer"
 
 interface LevelPreviewProps {
   levelData: LevelData | null
@@ -58,16 +58,16 @@ export default function LevelPreview({ levelData }: LevelPreviewProps) {
     const cellWidth = (canvasWidth - borderWidth * 2) / levelData.width
     const cellHeight = (canvasHeight - borderHeight * 2) / levelData.height
 
-    // Clear canvas with background color
-    ctx.fillStyle = "#f8f9fa"
+    // Clear canvas with black background (CGA style)
+    ctx.fillStyle = hexToColor(CGA_COLORS.black)
     ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
-    // Draw grid background
-    ctx.fillStyle = "#ffffff"
+    // Draw grid background (black)
+    ctx.fillStyle = hexToColor(CGA_COLORS.black)
     ctx.fillRect(borderWidth, borderHeight, canvasWidth - borderWidth * 2, canvasHeight - borderHeight * 2)
 
-    // Draw wall border
-    ctx.fillStyle = "#eab308" // Yellow
+    // Draw wall border (CGA brown)
+    ctx.fillStyle = hexToColor(CGA_COLORS.brown)
     // Top border
     ctx.fillRect(0, 0, canvasWidth, borderHeight)
     // Bottom border
@@ -77,10 +77,10 @@ export default function LevelPreview({ levelData }: LevelPreviewProps) {
     // Right border
     ctx.fillRect(canvasWidth - borderWidth, 0, borderWidth, canvasHeight)
 
-    // Draw grid lines (only if cells are large enough)
+    // Draw subtle grid lines (only if cells are large enough)
     const minCellSize = Math.min(cellWidth, cellHeight)
-    if (minCellSize > 2) {
-      ctx.strokeStyle = "#e5e7eb"
+    if (minCellSize > 4) {
+      ctx.strokeStyle = hexToColor(CGA_COLORS.darkGray)
       ctx.lineWidth = 0.5
 
       // Vertical lines
@@ -121,7 +121,7 @@ export default function LevelPreview({ levelData }: LevelPreviewProps) {
     })
 
     // Draw border
-    ctx.strokeStyle = "#d1d5db"
+    ctx.strokeStyle = hexToColor(CGA_COLORS.brown)
     ctx.lineWidth = 2
     ctx.strokeRect(0, 0, canvasWidth, canvasHeight)
   }, [levelData])
@@ -160,32 +160,32 @@ export default function LevelPreview({ levelData }: LevelPreviewProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Legend */}
+        {/* Legend - Using CGA colors */}
         <div className="space-y-2">
-          <h4 className="text-sm font-medium">Legend</h4>
-          <div className="grid grid-cols-2 gap-2 text-xs">
+          <h4 className="text-sm font-medium font-dos">Legend</h4>
+          <div className="grid grid-cols-2 gap-2 text-xs font-dos">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#3b82f6] transform rotate-45" />
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#55FFFF]">&#x263A;</div>
               <span>Player</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#ef4444] flex items-center justify-center text-[8px] font-bold text-white">H</div>
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#FF5555] font-bold">H</div>
               <span>Beast</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#9333ea] flex items-center justify-center text-[8px] font-bold text-white">H</div>
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#FF55FF] font-bold">H</div>
               <span>Super Beast</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#eab308] rounded-full" />
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#FFFF55]">&#x25CB;</div>
               <span>Egg</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#eab308]" />
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#AA5500]">&#x2588;</div>
               <span>Wall</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-[#1a472a]" />
+              <div className="w-4 h-4 bg-black flex items-center justify-center text-[#00AA00]">&#x2593;</div>
               <span>Block</span>
             </div>
           </div>

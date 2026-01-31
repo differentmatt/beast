@@ -66,3 +66,30 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* DOS-style font utility class */
+.font-dos {
+  font-family: var(--font-dos), 'Courier New', 'Consolas', monospace;
+}
+
+/* CRT scanline effect (optional - for extra retro feel) */
+.crt-effect {
+  position: relative;
+}
+
+.crt-effect::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.15),
+    rgba(0, 0, 0, 0.15) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+}

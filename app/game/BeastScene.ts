@@ -1,6 +1,7 @@
 import * as Phaser from "phaser";
 import { GameEntity, LevelData, Beast, Egg, Player, Direction, Position, MovementResult } from "@/app/types/game"
-import { ENTITY_COLORS, renderEntity } from "@/app/utils/entityRenderer"
+import { ENTITY_COLORS, CGA_COLORS, renderEntity } from "@/app/utils/entityRenderer"
+import { pcSpeaker } from "@/app/utils/sound"
 
 export default class BeastScene extends Phaser.Scene {
   gridSize = 20
@@ -66,6 +67,10 @@ export default class BeastScene extends Phaser.Scene {
   startGame() {
     this.started = true
     this.lastUpdateTime = this.time.now
+    // Resume audio context and play start sound
+    pcSpeaker.resume().then(() => {
+      pcSpeaker.gameStart()
+    })
   }
 
   // Public method for mobile DPad to trigger movement
@@ -235,6 +240,13 @@ export default class BeastScene extends Phaser.Scene {
 
   private updateEggs(currentTime: number) {
     this.eggs = this.eggs.filter(egg => {
+      const timeRemaining = egg.hatchDuration - (currentTime - egg.hatchTime)
+
+      // Warning beep when egg is about to hatch (last 2 seconds)
+      if (timeRemaining > 0 && timeRemaining < 2000 && Math.random() < 0.1) {
+        pcSpeaker.eggWarning()
+      }
+
       if (currentTime - egg.hatchTime >= egg.hatchDuration) {
         // Hatch egg into beast
         this.beasts.push({
@@ -245,6 +257,7 @@ export default class BeastScene extends Phaser.Scene {
           lastMoveTime: currentTime
         })
         this.beastsRemaining++
+        pcSpeaker.eggHatch()
         return false // Remove egg
       }
       return true
@@ -450,6 +463,9 @@ export default class BeastScene extends Phaser.Scene {
 
   private moveBlockChain(blocks: {x: number, y: number}[], direction: Direction) {
     const delta = this.directions[direction]
+
+    // Play block push sound
+    pcSpeaker.blockPush()
 
     // Move blocks from the end to avoid overwriting
     for (let i = blocks.length - 1; i >= 0; i--) {
@@ -707,6 +723,9 @@ export default class BeastScene extends Phaser.Scene {
       if (beast.type === "superBeast") {
         const crushedAgainstWall = this.checkSuperBeastCrushing(beast)
         if (!crushedAgainstWall) continue
+        pcSpeaker.superBeastCrushed()
+      } else {
+        pcSpeaker.beastCrushed()
       }
 
       this.beasts = this.beasts.filter(b => b.id !== beast.id)
@@ -783,6 +802,7 @@ export default class BeastScene extends Phaser.Scene {
 
   private handlePlayerDeath() {
     this.lives--
+    pcSpeaker.playerDeath()
 
     if (this.lives > 0) {
       // Player has lives remaining - pause game
@@ -790,6 +810,7 @@ export default class BeastScene extends Phaser.Scene {
     } else {
       // Game over
       this.gameState = "game-over"
+      pcSpeaker.gameOver()
       if (this.onGameOver) {
         this.onGameOver()
       }
@@ -805,6 +826,7 @@ export default class BeastScene extends Phaser.Scene {
       this.gameState = "paused-died" // Reuse this state to pause the game
       this.started = false
       this.showMessage("Level Completed!")
+      pcSpeaker.levelComplete()
       if (this.onLevelCompleted) {
         this.onLevelCompleted()
       }
@@ -824,11 +846,11 @@ export default class BeastScene extends Phaser.Scene {
     const totalHeight = (this.rows + 2) * this.gridSize
 
     // Draw background
-    graphics.fillStyle(0x000000)
+    graphics.fillStyle(CGA_COLORS.black)
     graphics.fillRect(0, 0, totalWidth, totalHeight)
 
-    // Draw border
-    graphics.fillStyle(ENTITY_COLORS.wall)
+    // Draw border using CGA brown
+    graphics.fillStyle(CGA_COLORS.brown)
     graphics.fillRect(0, 0, totalWidth, this.gridSize)
     graphics.fillRect(0, totalHeight - this.gridSize, totalWidth, this.gridSize)
     graphics.fillRect(0, 0, this.gridSize, totalHeight)

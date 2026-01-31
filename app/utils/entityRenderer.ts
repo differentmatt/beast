@@ -1,16 +1,51 @@
 import { GameEntity } from "@/app/types/game"
 
-// Shared color constants
-export const ENTITY_COLORS = {
-  player: 0x3b82f6,    // Blue
-  wall: 0xeab308,      // Yellow
-  block: 0x1a472a,     // Dark Green
-  beast: 0xef4444,     // Red
-  superBeast: 0x9333ea, // Purple
-  egg: 0xeab308,       // Yellow
-  hatchedBeast: 0xff8800, // Orange
-  empty: 0x000000,     // Black
+// CGA Color Palette - Authentic DOS colors
+export const CGA_COLORS = {
+  black: 0x000000,
+  blue: 0x0000AA,
+  green: 0x00AA00,
+  cyan: 0x00AAAA,
+  red: 0xAA0000,
+  magenta: 0xAA00AA,
+  brown: 0xAA5500,
+  lightGray: 0xAAAAAA,
+  darkGray: 0x555555,
+  lightBlue: 0x5555FF,
+  lightGreen: 0x55FF55,
+  lightCyan: 0x55FFFF,
+  lightRed: 0xFF5555,
+  lightMagenta: 0xFF55FF,
+  yellow: 0xFFFF55,
+  white: 0xFFFFFF,
 } as const
+
+// Entity colors using CGA palette
+export const ENTITY_COLORS = {
+  player: CGA_COLORS.lightCyan,
+  wall: CGA_COLORS.brown,
+  block: CGA_COLORS.green,
+  beast: CGA_COLORS.lightRed,
+  superBeast: CGA_COLORS.lightMagenta,
+  egg: CGA_COLORS.yellow,
+  hatchedBeast: CGA_COLORS.lightRed,
+  empty: CGA_COLORS.black,
+} as const
+
+// DOS Box-drawing and special characters
+export const DOS_CHARS = {
+  wall: '\u2588',        // █ Full block
+  block: '\u2593',       // ▓ Dark shade
+  player: '\u263A',      // ☺ Smiley face (classic DOS player)
+  beast: 'H',            // H - the iconic beast
+  superBeast: 'H',       // H - same but different color
+  hatchedBeast: 'H',     // H - same but different color
+  egg: '\u25CB',         // ○ Circle
+  empty: ' ',            // Space
+} as const
+
+// The DOS font family to use (VT323 from Google Fonts, with fallbacks)
+export const DOS_FONT = 'VT323, "Courier New", "Consolas", monospace'
 
 // Helper to convert hex number to hex string with #
 export const hexToColor = (hex: number): string => {
@@ -33,134 +68,146 @@ export interface RenderOptions {
 }
 
 // Function to render an entity using either Canvas 2D or Phaser Graphics
+// Now renders DOS-style characters instead of shapes
 export const renderEntity = (entity: GameEntity, options: RenderOptions) => {
   const { x, y, size, ctx, graphics, scene } = options
   const centerX = x + size / 2
   const centerY = y + size / 2
-  const entitySize = size * 0.8
 
   if (ctx) {
     // Canvas 2D rendering (for LevelPreview)
-    switch (entity) {
-      case "player":
-        ctx.fillStyle = hexToColor(ENTITY_COLORS.player)
-        ctx.beginPath()
-        // Draw diamond shape
-        ctx.moveTo(centerX, centerY - entitySize / 2)
-        ctx.lineTo(centerX + entitySize / 2, centerY)
-        ctx.lineTo(centerX, centerY + entitySize / 2)
-        ctx.lineTo(centerX - entitySize / 2, centerY)
-        ctx.closePath()
-        ctx.fill()
-        break
-      case "beast":
-        ctx.fillStyle = hexToColor(ENTITY_COLORS.beast)
-        ctx.font = `${entitySize * 0.8}px Arial`
-        ctx.textAlign = "center"
-        ctx.textBaseline = "middle"
-        ctx.fillText("H", centerX, centerY)
-        break
-      case "superBeast":
-        ctx.fillStyle = hexToColor(ENTITY_COLORS.superBeast)
-        ctx.font = `bold ${entitySize * 0.8}px Arial`
-        ctx.textAlign = "center"
-        ctx.textBaseline = "middle"
-        ctx.fillText("H", centerX, centerY)
-        break
-      case "egg":
-        ctx.fillStyle = hexToColor(ENTITY_COLORS.egg)
-        ctx.beginPath()
-        ctx.arc(centerX, centerY, entitySize / 2, 0, 2 * Math.PI)
-        ctx.fill()
-        break
-      case "wall":
-        ctx.fillStyle = hexToColor(ENTITY_COLORS.wall)
-        ctx.fillRect(x, y, size, size)
-        break
-      case "block":
-        // Create a patchy dark green pattern
-        const darkGreen = hexToColor(ENTITY_COLORS.block)
-        const darkerGreen = "#0f2d1a" // Even darker green for patches
-
-        // Fill base color
-        ctx.fillStyle = darkGreen
-        ctx.fillRect(x, y, size, size)
-
-        // Add random patches
-        const patchSize = Math.max(2, Math.floor(size / 4))
-        for (let px = 0; px < size; px += patchSize) {
-          for (let py = 0; py < size; py += patchSize) {
-            if (Math.random() > 0.5) {
-              ctx.fillStyle = darkerGreen
-              ctx.fillRect(x + px, y + py, patchSize, patchSize)
-            }
-          }
-        }
-        break
-    }
+    renderEntityCanvas(entity, ctx, x, y, size, centerX, centerY)
   } else if (graphics && scene) {
     // Phaser Graphics rendering (for BeastScene)
-    switch (entity) {
-      case "player":
-        graphics.fillStyle(ENTITY_COLORS.player)
-        graphics.beginPath()
-        graphics.moveTo(centerX, centerY - entitySize / 2)
-        graphics.lineTo(centerX + entitySize / 2, centerY)
-        graphics.lineTo(centerX, centerY + entitySize / 2)
-        graphics.lineTo(centerX - entitySize / 2, centerY)
-        graphics.closePath()
-        graphics.fillPath()
-        break
-      case "beast":
-        // Add "H" text with red color
-        const beastText = scene.add.text(centerX, centerY, "H", {
-          fontSize: `${entitySize * 1.0}px`,
-          color: hexToColor(ENTITY_COLORS.beast)
-        }).setOrigin(0.5)
-        break
-      case "superBeast":
-        graphics.fillStyle(ENTITY_COLORS.superBeast)
-        graphics.fillCircle(centerX, centerY, entitySize / 2)
-        // Add "H" text
-        const superBeastText = scene.add.text(centerX, centerY, "H", {
-          fontSize: `${entitySize * 0.8}px`,
-          color: '#ffffff',
-          fontStyle: 'bold'
-        }).setOrigin(0.5)
-        break
-      case "hatchedBeast":
-        // Draw distinctive orange circle for hatched beast
-        graphics.fillStyle(ENTITY_COLORS.hatchedBeast)
-        graphics.fillCircle(centerX, centerY, entitySize / 2)
-        // Add "H" text with darker color for contrast
-        const hatchedBeastText = scene.add.text(centerX, centerY, "H", {
-          fontSize: `${entitySize * 0.8}px`,
-          color: '#000000',
-          fontStyle: 'bold'
-        }).setOrigin(0.5)
-        break
-      case "egg":
-        graphics.fillStyle(ENTITY_COLORS.egg)
-        graphics.fillCircle(centerX, centerY, entitySize / 2)
-        break
-      case "wall":
-        graphics.fillStyle(ENTITY_COLORS.wall)
-        graphics.fillRect(x, y, size, size)
-        break
-      case "block":
-        graphics.fillStyle(ENTITY_COLORS.block)
-        graphics.fillRect(x, y, size, size)
-        // Add patchy pattern
-        const patchSize = Math.max(2, Math.floor(size / 4))
-        for (let px = 0; px < size; px += patchSize) {
-          for (let py = 0; py < size; py += patchSize) {
-            if (Math.random() > 0.5) {
-              graphics.fillStyle(0x0f2d1a)
-              graphics.fillRect(x + px, y + py, patchSize, patchSize)
-            }
-          }
-        }
-        break
-    }
+    renderEntityPhaser(entity, graphics, scene, x, y, size, centerX, centerY)
   }
+}
+
+// Canvas 2D rendering for level preview
+function renderEntityCanvas(
+  entity: GameEntity,
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  centerX: number,
+  centerY: number
+) {
+  // Fill background with black first
+  ctx.fillStyle = hexToColor(CGA_COLORS.black)
+  ctx.fillRect(x, y, size, size)
+
+  const fontSize = size * 0.9
+  ctx.font = `${fontSize}px ${DOS_FONT}`
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+
+  switch (entity) {
+    case "player":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.player)
+      ctx.fillText(DOS_CHARS.player, centerX, centerY)
+      break
+    case "beast":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.beast)
+      ctx.fillText(DOS_CHARS.beast, centerX, centerY)
+      break
+    case "superBeast":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.superBeast)
+      ctx.fillText(DOS_CHARS.superBeast, centerX, centerY)
+      break
+    case "hatchedBeast":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.hatchedBeast)
+      // Hatched beasts blink/flash - use slightly different rendering
+      ctx.font = `bold ${fontSize}px ${DOS_FONT}`
+      ctx.fillText(DOS_CHARS.hatchedBeast, centerX, centerY)
+      break
+    case "egg":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.egg)
+      ctx.fillText(DOS_CHARS.egg, centerX, centerY)
+      break
+    case "wall":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.wall)
+      ctx.fillText(DOS_CHARS.wall, centerX, centerY)
+      break
+    case "block":
+      ctx.fillStyle = hexToColor(ENTITY_COLORS.block)
+      ctx.fillText(DOS_CHARS.block, centerX, centerY)
+      break
+  }
+}
+
+// Phaser rendering for game scene
+function renderEntityPhaser(
+  entity: GameEntity,
+  graphics: Phaser.GameObjects.Graphics,
+  scene: Phaser.Scene,
+  x: number,
+  y: number,
+  size: number,
+  centerX: number,
+  centerY: number
+) {
+  // Fill background with black
+  graphics.fillStyle(CGA_COLORS.black)
+  graphics.fillRect(x, y, size, size)
+
+  const fontSize = Math.floor(size * 0.9)
+
+  switch (entity) {
+    case "player":
+      scene.add.text(centerX, centerY, DOS_CHARS.player, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.player),
+      }).setOrigin(0.5)
+      break
+    case "beast":
+      scene.add.text(centerX, centerY, DOS_CHARS.beast, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.beast),
+      }).setOrigin(0.5)
+      break
+    case "superBeast":
+      scene.add.text(centerX, centerY, DOS_CHARS.superBeast, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.superBeast),
+      }).setOrigin(0.5)
+      break
+    case "hatchedBeast":
+      scene.add.text(centerX, centerY, DOS_CHARS.hatchedBeast, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.hatchedBeast),
+        fontStyle: 'bold',
+      }).setOrigin(0.5)
+      break
+    case "egg":
+      scene.add.text(centerX, centerY, DOS_CHARS.egg, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.egg),
+      }).setOrigin(0.5)
+      break
+    case "wall":
+      scene.add.text(centerX, centerY, DOS_CHARS.wall, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.wall),
+      }).setOrigin(0.5)
+      break
+    case "block":
+      scene.add.text(centerX, centerY, DOS_CHARS.block, {
+        fontSize: `${fontSize}px`,
+        fontFamily: DOS_FONT,
+        color: hexToColor(ENTITY_COLORS.block),
+      }).setOrigin(0.5)
+      break
+  }
+}
+
+// Legacy color exports for backwards compatibility with border rendering
+export const LEGACY_COLORS = {
+  wall: CGA_COLORS.brown,
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/app/components/ui/card"
 import { Trophy } from "lucide-react"
-import { getHighScores, formatScoreDate, type HighScoreEntry } from "@/app/utils/highScores"
+import { getHighScores, type HighScoreEntry } from "@/app/utils/highScores"
 
 interface HighScoresProps {
   refreshTrigger?: number // Increment to refresh scores

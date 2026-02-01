@@ -16,6 +16,9 @@ const eslintConfig = [
     languageOptions: {
       sourceType: "commonjs",
     },
+    rules: {
+      "import/no-commonjs": "off",
+    },
   },
 ];
 

@@ -1,6 +1,6 @@
 import * as Phaser from "phaser";
 import { GameEntity, LevelData, Beast, Egg, Player, Direction, Position, MovementResult, GameStatus } from "@/app/types/game"
-import { ENTITY_COLORS, CGA_COLORS, renderEntity } from "@/app/utils/entityRenderer"
+import { CGA_COLORS, renderEntity } from "@/app/utils/entityRenderer"
 import { pcSpeaker } from "@/app/utils/sound"
 
 export default class BeastScene extends Phaser.Scene {
@@ -205,6 +205,11 @@ export default class BeastScene extends Phaser.Scene {
     // paused, paused-died, and game-over states stop updates
 
     this.renderMap()
+
+    // Redraw message overlay after renderMap (since renderMap clears all children)
+    if (this.gameState === "paused") {
+      this.showMessage("PAUSED\n\nPress P or ESC to resume")
+    }
   }
 
   // Toggle pause state
@@ -964,7 +969,6 @@ export default class BeastScene extends Phaser.Scene {
 
     // Draw countdown number
     const centerX = x + this.gridSize / 2
-    const centerY = y + this.gridSize / 2
 
     // Draw small countdown text above the egg
     this.add.text(centerX, y - 2, secondsLeft.toString(), {

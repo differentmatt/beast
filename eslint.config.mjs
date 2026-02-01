@@ -10,11 +10,17 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
+  {
+    ignores: [".next/**", "node_modules/**"],
+  },
   ...compat.extends("next/core-web-vitals"),
   {
     files: ["**/*.cjs"],
     languageOptions: {
-      sourceType: "commonjs",
+      sourceType: "script",
+      parserOptions: {
+        sourceType: "script",
+      },
     },
     rules: {
       "import/no-commonjs": "off",

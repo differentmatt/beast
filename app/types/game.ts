@@ -2,6 +2,9 @@ export type GameEntity = "player" | "beast" | "superBeast" | "hatchedBeast" | "e
 
 export type Direction = "up" | "down" | "left" | "right" | "up-left" | "up-right" | "down-left" | "down-right"
 
+// Game status for pause, death, etc.
+export type GameStatus = "playing" | "paused" | "paused-died" | "game-over"
+
 export interface Position {
   x: number
   y: number

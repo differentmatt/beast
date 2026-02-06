@@ -3,12 +3,15 @@
 import { useState, useEffect, useRef, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/app/components/ui/button"
-import { RefreshCw, Play, ArrowRight, Home } from "lucide-react"
+import { Input } from "@/app/components/ui/input"
+import { RefreshCw, Play, ArrowRight, Home, Pause } from "lucide-react"
 import StatusBar from "@/app/components/StatusBar"
 import DPad from "@/app/components/DPad"
 import GameCanvas, { GameCanvasHandles } from "@/app/components/GameCanvas"
-import { LevelData } from "../types/game"
-import { getLevelInfo, campaignLevels, userLevels } from "../data/levels"
+import HighScores from "@/app/components/HighScores"
+import { GameStatus } from "../types/game"
+import { getLevelInfo, campaignLevels } from "../data/levels"
+import { isHighScore, saveHighScore, getTopScore } from "../utils/highScores"
 
 function GameAreaContent() {
   const searchParams = useSearchParams()
@@ -26,9 +29,14 @@ function GameAreaContent() {
   const [beastsLeft, setBeastsLeft] = useState(5)
   const [lives, setLives] = useState(3)
   const [gameSpeed, setGameSpeed] = useState(1.0)
-  const [gameState, setGameState] = useState<"playing" | "paused-died" | "game-over">("playing")
+  const [gameState, setGameState] = useState<GameStatus>("playing")
   const [actualLives, setActualLives] = useState(3)
   const [levelCompleted, setLevelCompleted] = useState(false)
+  const [showHighScoreEntry, setShowHighScoreEntry] = useState(false)
+  const [playerName, setPlayerName] = useState("")
+  const [highScorePosition, setHighScorePosition] = useState<number | null>(null)
+  const [highScoreRefresh, setHighScoreRefresh] = useState(0)
+  const [topScore, setTopScore] = useState(0)
 
   // Check device and orientation with improved detection for iOS and tablets
   useEffect(() => {
@@ -186,7 +194,33 @@ function GameAreaContent() {
     setGameSpeed(levelInfo.gameSpeed)
     setLevelCompleted(false) // Reset level completed state when level changes
     setGameState("playing") // Reset game state when level changes
+    setTopScore(getTopScore())
   }, [levelId])
+
+  // Check for high score when game ends
+  useEffect(() => {
+    if ((gameState === "game-over" || levelCompleted) && score > 0) {
+      if (isHighScore(score)) {
+        setShowHighScoreEntry(true)
+      }
+    }
+  }, [gameState, levelCompleted, score])
+
+  const handleSaveHighScore = () => {
+    if (playerName.trim() || score > 0) {
+      const position = saveHighScore(playerName || "Anonymous", score, parseInt(levelId) || 1)
+      setHighScorePosition(position)
+      setShowHighScoreEntry(false)
+      setHighScoreRefresh(prev => prev + 1)
+      setTopScore(getTopScore())
+    }
+  }
+
+  const handleTogglePause = () => {
+    if (gameCanvasRef.current) {
+      gameCanvasRef.current.togglePause()
+    }
+  }
 
   return (
     <div className={`flex flex-col h-full w-full ${isLandscape ? "p-2" : "p-4"}`}>
@@ -216,9 +250,36 @@ function GameAreaContent() {
                   <div className="bg-gray-900/90 border border-gray-600 rounded-lg p-6 text-center max-w-sm mx-4">
                     {levelCompleted ? (
                       <>
-                        <h2 className="text-2xl font-bold text-green-400 mb-2">Level Completed!</h2>
-                        <p className="text-gray-300 mb-4">Congratulations! You defeated all the beasts.</p>
-                        <p className="text-sm text-gray-400 mb-4">Final Score: {score}</p>
+                        <h2 className="text-2xl font-bold text-green-400 mb-2 font-dos">Level Completed!</h2>
+                        <p className="text-gray-300 mb-2">Congratulations! You defeated all the beasts.</p>
+                        <p className="text-lg font-bold text-yellow-400 mb-4 font-dos">Score: {score}</p>
+
+                        {/* High Score Entry */}
+                        {showHighScoreEntry && (
+                          <div className="mb-4 p-3 bg-gray-800 rounded border border-yellow-500">
+                            <p className="text-yellow-400 text-sm mb-2 font-dos">New High Score!</p>
+                            <Input
+                              type="text"
+                              placeholder="Enter your name"
+                              value={playerName}
+                              onChange={(e) => setPlayerName(e.target.value)}
+                              maxLength={12}
+                              className="mb-2 text-center font-dos"
+                              onKeyDown={(e) => e.key === 'Enter' && handleSaveHighScore()}
+                            />
+                            <Button size="sm" onClick={handleSaveHighScore} className="w-full font-dos">
+                              Save Score
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Show position if just saved */}
+                        {highScorePosition && !showHighScoreEntry && (
+                          <p className="text-green-400 text-sm mb-4 font-dos">
+                            You ranked #{highScorePosition}!
+                          </p>
+                        )}
+
                         <div className="flex gap-2 justify-center flex-wrap">
                           <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
                             <RefreshCw className="h-4 w-4" />
@@ -253,8 +314,41 @@ function GameAreaContent() {
                       </>
                     ) : (
                       <>
-                        <h2 className="text-2xl font-bold text-red-500 mb-2">Game Over!</h2>
-                        <p className="text-gray-300 mb-4">No lives remaining</p>
+                        <h2 className="text-2xl font-bold text-red-500 mb-2 font-dos">Game Over!</h2>
+                        <p className="text-gray-300 mb-2">No lives remaining</p>
+                        <p className="text-lg font-bold text-yellow-400 mb-4 font-dos">Score: {score}</p>
+
+                        {/* High Score Entry */}
+                        {showHighScoreEntry && (
+                          <div className="mb-4 p-3 bg-gray-800 rounded border border-yellow-500">
+                            <p className="text-yellow-400 text-sm mb-2 font-dos">New High Score!</p>
+                            <Input
+                              type="text"
+                              placeholder="Enter your name"
+                              value={playerName}
+                              onChange={(e) => setPlayerName(e.target.value)}
+                              maxLength={12}
+                              className="mb-2 text-center font-dos"
+                              onKeyDown={(e) => e.key === 'Enter' && handleSaveHighScore()}
+                            />
+                            <Button size="sm" onClick={handleSaveHighScore} className="w-full font-dos">
+                              Save Score
+                            </Button>
+                          </div>
+                        )}
+
+                        {/* Show position if just saved */}
+                        {highScorePosition && !showHighScoreEntry && (
+                          <p className="text-green-400 text-sm mb-4 font-dos">
+                            You ranked #{highScorePosition}!
+                          </p>
+                        )}
+
+                        {/* High Scores Display */}
+                        <div className="mb-4 max-h-32 overflow-y-auto">
+                          <HighScores refreshTrigger={highScoreRefresh} compact />
+                        </div>
+
                         <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
                           <RefreshCw className="h-4 w-4" />
                           <span>Restart Game</span>
@@ -266,16 +360,32 @@ function GameAreaContent() {
               )}
             </div>
 
-            {/* Status Bar with Restart Button - Now directly below game area */}
+            {/* Status Bar with Restart/Pause Buttons */}
             <div className={`w-full flex justify-between items-center ${isLandscape ? "mt-1" : "mt-2"}`}>
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" onClick={handleRestart} className="flex items-center gap-1">
                   <RefreshCw className="h-4 w-4" />
-                  <span>Restart</span>
+                  <span className="hidden sm:inline">Restart</span>
                 </Button>
-
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTogglePause}
+                  className="flex items-center gap-1"
+                  disabled={gameState === "game-over" || gameState === "paused-died" || levelCompleted}
+                >
+                  <Pause className="h-4 w-4" />
+                  <span className="hidden sm:inline">{gameState === "paused" ? "Resume" : "Pause"}</span>
+                </Button>
               </div>
-              <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
+              <div className="flex items-center gap-4">
+                {topScore > 0 && (
+                  <span className="text-xs text-muted-foreground font-dos hidden sm:inline">
+                    Hi: {topScore.toLocaleString()}
+                  </span>
+                )}
+                <StatusBar beastsLeft={beastsLeft} level={level} time={time} lives={actualLives} score={score} />
+              </div>
             </div>
           </div>
 

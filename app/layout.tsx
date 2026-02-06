@@ -1,13 +1,20 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Providers } from '@/app/providers';
-import { Inter } from "next/font/google"
+import { Inter, VT323 } from "next/font/google"
 import "./globals.css"
 import Navbar from "@/app/components/Navbar"
 import { ThemeProvider } from "@/app/components/ThemeProvider"
 import { Suspense } from "react"
 
 const inter = Inter({ subsets: ["latin"] })
+
+// DOS-style font for authentic retro look
+const vt323 = VT323({
+  weight: "400",
+  subsets: ["latin"],
+  variable: "--font-dos",
+})
 
 export const metadata: Metadata = {
   title: "Beast",
@@ -21,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.className} h-screen flex flex-col overflow-hidden`}>
+      <body className={`${inter.className} ${vt323.variable} h-screen flex flex-col overflow-hidden`}>
         <Providers>
           <ThemeProvider attribute="class" defaultTheme="dark">
             <Suspense fallback={<div className="h-14 border-b"></div>}>
